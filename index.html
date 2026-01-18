@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>亚马逊竞品抓取-自定义等待版(适配卖家精灵)</title>
+    <style>
+        * {margin: 8px;padding: 0;box-sizing: border-box;font-size: 14px;}
+        body {font-family: 微软雅黑, Arial;max-width: 1600px;margin: 20px auto;background: #f5f5f5;}
+        .btn {padding: 12px 20px;border: none;border-radius: 6px;margin: 5px;cursor: pointer;font-weight: bold;color: #fff;}
+        #getBtn {background: #1677ff;}
+        #getBtn:disabled {background: #99c2ff;cursor: not-allowed;}
+        #copyBtn {background: #00b42a;}
+        #copyBtn:disabled {background: #86e89c;cursor: not-allowed;}
+        #downBtn {background: #ff7d00;}
+        #downBtn:disabled {background: #ffc299;cursor: not-allowed;}
+        #resetBtn {background: #666666;}
+        #tips {color: #ff4d4f;padding: 10px;background: #fff8f8;border: 1px solid #ffccc7;border-radius: 6px;margin-bottom: 15px;}
+        .setting-box {margin:15px 0;padding:15px;background:#fff;border-radius:6px;border:1px solid #eee;}
+        .setting-group {display: flex;flex-wrap: wrap;gap: 15px;margin-bottom: 10px;}
+        .setting-item {display: flex;align-items: center;}
+        .setting-item label {margin-right: 8px;font-weight: bold;}
+        .setting-item input {width: 100px;padding: 6px;border: 1px solid #ccc;border-radius: 4px;}
+        .asin-box {margin:15px 0;padding:10px;background:#fff;border-radius:6px;border:1px solid #eee;}
+        .asin-box textarea {width:100%;height:120px;padding:10px;border:1px solid #ccc;border-radius:4px;resize:none;outline:none;font-size:14px;}
+        .asin-box p {color:#666;margin-top:8px;font-size:13px;}
+        table {width: 100%;border-collapse: collapse;background: #fff;margin-top:15px;}
+        th,td {border:1px solid #ccc;padding:8px;text-align:center;}
+        th {background:#f0f7ff;font-weight:bold;}
+        tr:nth-child(even) {background:#f9fcff;}
+        .success {color:#00b42a;padding:10px;margin-top:10px;border-radius:4px;}
+        .loading {color:#1677ff;padding:10px;margin-top:10px;border-radius:4px;}
+        .error {color:#ff4d4f;padding:8px;margin-top:5px;font-size:13px;border-radius:4px;}
+        .progress {color:#1677ff;padding:8px;margin-top:5px;font-weight:bold;border-radius:4px;}
+    </style>
+</head>
+<body>
+    <div id="tips">⚠ 自定义等待版 ✅ 可根据网络情况调整等待时间 | 先等页面加载→再等插件加载，提高采集成功率</div>
+    
+    <!-- 等待时间设置区域 -->
+    <div class="setting-box">
+        <label><b>⏱️ 等待时间设置（单位：秒）</b></label>
+        <div class="setting-group">
+            <div class="setting-item">
+                <label for="pageLoadWait">亚马逊页面加载：</label>
+                <input type="number" id="pageLoadWait" min="1" max="60" value="10">
+                <span style="margin-left:5px;">秒</span>
+            </div>
+            <div class="setting-item">
+                <label for="pluginLoadWait">卖家精灵插件加载：</label>
+                <input type="number" id="pluginLoadWait" min="1" max="60" value="10">
+                <span style="margin-left:5px;">秒</span>
+            </div>
+            <div class="setting-item">
+                <label for="timeoutExtend">超时延长时间：</label>
+                <input type="number" id="timeoutExtend" min="1" max="30" value="10">
+                <span style="margin-left:5px;">秒</span>
+            </div>
+        </div>
+        <p style="color:#666;font-size:13px;">💡 提示：网络较慢或插件加载慢时，请适当增大数值（1秒=1000毫秒）</p>
+    </div>
+    
+    <div class="asin-box">
+        <label><b>📝 填写竞品ASIN（每行1个，仅支持美国站10位ASIN）</b></label>
+        <textarea id="asinInput" placeholder="例如：
+B09XXXXXXX
+B08XXXXXXX
+B07XXXXXXX
+直接粘贴/输入即可">BOFK3CLKNJ
+BOFK3CB9P1
+BOFK3BVZQC
+BOFK3FM573</textarea>
+        <p>✅ 规则：每行1个美国站ASIN（10位字母/数字），自动批量打开+采集+关页</p>
+    </div>
+
+    <button class="btn" id="getBtn">✅ 全自动批量抓取（自定义等待+精准采集）</button>
+    <button class="btn" id="resetBtn">🆑 清空所有数据</button>
+    <button class="btn" id="copyBtn" disabled>📋 复制到Excel(自动对齐)</button>
+    <button class="btn" id="downBtn" disabled>💾 下载Excel分析表</button>
+
+    <div id="loadingText" class="loading" style="display: none;"></div>
+    <div id="progressText" class="progress" style="display: none;"></div>
+    <div id="errorText" class="error" style="display: none;"></div>
+    <div id="successText" class="success" style="display: none;"></div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>商品ASIN</th>
+                <th>大类名+排名</th>
+                <th>小类目名+排名</th>
+                <th>销售价(美金)</th>
+                <th>月销量</th>
+                <th>近1年销量</th>
+                <th>上架时间</th>
+                <th>累计评论数</th>
+                <th>Rating评分</th>
+                <th>跟卖数量</th>
+                <th>FBA/FBM</th>
+                <th>变体数量</th>
+                <th>新品标</th>
+                <th>30天新增评论</th>
+                <th>好评率(%)</th>
+                <th>品牌名称</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr><td colspan="16">暂无数据，填写ASIN后点击上方抓取按钮即可</td></tr>
+        </tbody>
+    </table>
+
+<script>
+let asinDataList = [];
+const AMAZON_US_URL = "https://www.amazon.com/dp/";
+const MAX_RETRIES = 3; // 数据读取最大重试次数
+
+// 绑定按钮事件
+document.getElementById('getBtn').addEventListener('click', startGrabAsinData);
+document.getElementById('copyBtn').addEventListener('click', copyAllData);
+document.getElementById('downBtn').addEventListener('click', downloadExcel);
+document.getElementById('resetBtn').addEventListener('click', resetAllData);
+
+// 核心：全自动抓取主函数（自定义等待+多层校验）
+async function startGrabAsinData() {
+    try {
+        // 1. 获取并验证用户设置的等待时间（转换为毫秒）
+        const pageLoadWaitInput = document.getElementById('pageLoadWait');
+        const pluginLoadWaitInput = document.getElementById('pluginLoadWait');
+        const timeoutExtendInput = document.getElementById('timeoutExtend');
+        
+        const pageLoadWait = parseInt(pageLoadWaitInput.value);
+        const pluginLoadWait = parseInt(pluginLoadWaitInput.value);
+        const timeoutExtend = parseInt(timeoutExtendInput.value);
+
+        if (isNaN(pageLoadWait) || pageLoadWait < 1 || pageLoadWait > 60) {
+            showMsg('error', '❌ 页面加载等待时间需为1-60之间的数字！');
+            return;
+        }
+        if (isNaN(pluginLoadWait) || pluginLoadWait < 1 || pluginLoadWait > 60) {
+            showMsg('error', '❌ 插件加载等待时间需为1-60之间的数字！');
+            return;
+        }
+        if (isNaN(timeoutExtend) || timeoutExtend < 1 || timeoutExtend > 30) {
+            showMsg('error', '❌ 超时延长时间需为1-30之间的数字！');
+            return;
+        }
+
+        const PAGE_LOAD_WAIT = pageLoadWait * 1000;
+        const PLUGIN_LOAD_WAIT = pluginLoadWait * 1000;
+        const TIMEOUT_EXTEND = timeoutExtend * 1000;
+        const totalWaitPerAsin = (PAGE_LOAD_WAIT + PLUGIN_LOAD_WAIT) / 1000;
+
+        // 2. 获取并预处理ASIN
+        let asinText = document.getElementById('asinInput').value.trim();
+        let asinList = asinText.split('\n').map(asin => asin.trim()).filter(asin => asin);
+        if (asinList.length === 0) {
+            showMsg('error', '❌ 请填写至少1个ASIN！');
+            return;
+        }
+
+        // 3. 初始化状态
+        asinDataList = [];
+        showMsg('loading', `🔍 开始全自动抓取 → 自定义等待模式已开启（约${totalWaitPerAsin}秒/个），耐心等待...`);
+        showMsg('progress', `📊 待抓取ASIN总数：${asinList.length} 个 | 等待设置：页面加载${pageLoadWait}秒 + 插件加载${pluginLoadWait}秒`);
+        showMsg('error', '');
+        showMsg('success', '');
+        document.getElementById('getBtn').disabled = true;
+        document.getElementById('copyBtn').disabled = true;
+        document.getElementById('downBtn').disabled = true;
+
+        let successCount = 0;
+        let failCount = 0;
+        const total = asinList.length;
+
+        // 4. 遍历ASIN逐个采集
+        for (let i = 0; i < total; i++) {
+            let asin = asinList[i];
+            let current = i + 1;
+            let percent = Math.round((current / total) * 100);
+            showMsg('progress', `📊 抓取进度 ${current}/${total} (${percent}%) | 当前ASIN：${asin}`);
+
+            // 校验1：ASIN格式是否有效（10位字母/数字）
+            if (!/^[A-Z0-9]{10}$/.test(asin)) {
+                failCount++;
+                addFailData(asin, 'ASIN格式无效（需10位字母/数字）');
+                showMsg('error', `❌ ${asin} 采集失败：ASIN格式无效（需10位字母/数字）`);
+                renderTableData();
+                continue;
+            }
+
+            // 打开亚马逊商品页
+            let amazonWin = window.open(`${AMAZON_US_URL}${asin}`, '_blank');
+            if (!amazonWin) {
+                failCount++;
+                addFailData(asin, '浏览器拦截弹窗');
+                showMsg('error', `⚠️ ${asin} 采集失败：浏览器拦截了商品页弹窗！请允许弹窗后重试`);
+                renderTableData();
+                continue;
+            }
+
+            try {
+                // 校验2：等待亚马逊页面加载完成
+                showMsg('loading', `🔍 ${asin} - 等待亚马逊页面加载（${pageLoadWait}秒）...`);
+                await sleep(PAGE_LOAD_WAIT);
+                
+                // 检测页面是否加载完成（避免空白页）
+                let loadCheckCount = 0;
+                while (amazonWin.document.readyState !== 'complete' && loadCheckCount < 3) {
+                    showMsg('loading', `🔍 ${asin} - 页面加载较慢，第${loadCheckCount+1}次延长等待（+${timeoutExtend}秒）...`);
+                    await sleep(TIMEOUT_EXTEND);
+                    loadCheckCount++;
+                }
+
+                // 校验3：等待卖家精灵插件加载数据
+                showMsg('loading', `🔍 ${asin} - 等待卖家精灵插件加载数据（${pluginLoadWait}秒）...`);
+                await sleep(PLUGIN_LOAD_WAIT);
+
+                // 核心：多次尝试读取亚马逊商品页的卖家精灵数据
+                let amazonPageText = '';
+                let retryCount = 0;
+                
+                while (retryCount < MAX_RETRIES) {
+                    try {
+                        amazonPageText = amazonWin.document.body.innerText || '';
+                        // 检查数据是否足够
+                        if (amazonPageText.length > 1000) {
+                            break; // 数据足够，退出重试
+                        }
+                    } catch (err) {
+                        // 读取失败，继续重试
+                    }
+                    
+                    retryCount++;
+                    showMsg('loading', `🔍 ${asin} - 数据未加载完全，第${retryCount}次重试（+${timeoutExtend}秒）...`);
+                    await sleep(TIMEOUT_EXTEND);
+                }
+
+                // 如果多次重试后仍无有效数据
+                if (amazonPageText.length < 1000) {
+                    throw new Error('页面数据不足，可能是网络问题或插件未加载');
+                }
+
+                // 采集所有字段（兼容卖家精灵所有数据位置）
+                let asinData = {
+                    asin: asin,
+                    bigCateRank: getMatchData(amazonPageText, /Best Seller in (.*?) \((\d+,?\d*)\)/, /大类[:：](.*?)[:：](\d+,?\d*)/),
+                    smallCateRank: getMatchData(amazonPageText, /小类[:：](.*?)[:：](\d+,?\d*)/, /细分类目[:：](.*?)[:：](\d+,?\d*)/),
+                    price: getMatchData(amazonPageText, /\$(\d+\.\d{2})(\s*-\s*\$(\d+\.\d{2}))?/, /售价[:：]\s*(\d+\.\d{2})\s*美金/),
+                    monthSale: getMatchData(amazonPageText, /月销量[:：]\s*(\d+,?\d*)/, /月销[:：]\s*(\d+,?\d*)/),
+                    yearSale: getMatchData(amazonPageText, /年销量[:：]\s*(\d+,?\d*)/, /近1年销量[:：]\s*(\d+,?\d*)/),
+                    onTime: getMatchData(amazonPageText, /上架时间[:：]\s*(\d{4}-\d{1,2}-\d{1,2})/, /Listing创建[:：]\s*(\d{4}-\d{1,2}-\d{1,2})/),
+                    reviewNum: getMatchData(amazonPageText, /全球评论[:：]\s*(\d+,?\d*)/, /评论数[:：]\s*(\d+,?\d*)/),
+                    rating: getMatchData(amazonPageText, /评分[:：]\s*(\d\.\d)/, /Rating[:：]\s*(\d\.\d)/),
+                    followNum: getMatchData(amazonPageText, /跟卖[:：]\s*(\d+)/, /跟卖数量[:：]\s*(\d+)/, '0'),
+                    shipping: getMatchData(amazonPageText, /发货方式[:：]\s*(FBA|FBM)/, /物流[:：]\s*(FBA|FBM)/, '未知'),
+                    variantNum: getMatchData(amazonPageText, /变体[:：]\s*(\d+)/, /变体数量[:：]\s*(\d+)/, '1'),
+                    newTag: getMatchData(amazonPageText, /新品标[:：]\s*(有|无)/, /New Release[:：]\s*(是|否)/, '无'),
+                    newReview: getMatchData(amazonPageText, /30天新增评论[:：]\s*(\d+,?\d*)/, /近期评论[:：]\s*(\d+,?\d*)/, '0'),
+                    goodRate: getMatchData(amazonPageText, /好评率[:：]\s*(\d+%)/, /满意度[:：]\s*(\d+%)/, '暂无'),
+                    brand: getMatchData(amazonPageText, /品牌[:：]\s*(.+)/, /Brand[:：]\s*(.+)/, '无备案')
+                };
+
+                // 校验4：是否采集到有效数据
+                let validData = false;
+                Object.values(asinData).forEach(val => {
+                    if (val && val !== '暂无数据' && val !== '0' && val !== '未知' && val !== '1' && val !== '无' && val !== '无备案') {
+                        validData = true;
+                    }
+                });
+
+                if (validData) {
+                    asinDataList.push(asinData);
+                    successCount++;
+                    showMsg('error', '');
+                } else {
+                    throw new Error('未采集到卖家精灵数据（插件未加载/非美国站/商品不存在）');
+                }
+
+            } catch (err) {
+                // 采集失败处理
+                failCount++;
+                addFailData(asin, err.message);
+                showMsg('error', `❌ ${asin} 采集失败：${err.message}`);
+            } finally {
+                // 确保数据处理完成后再关闭页面
+                showMsg('loading', `🔍 ${asin} - 数据处理完成，关闭页面...`);
+                try { 
+                    if (!amazonWin.closed) amazonWin.close(); 
+                } catch (e) {}
+                // 实时渲染表格
+                renderTableData();
+            }
+        }
+
+        // 5. 采集完成汇总
+        showMsg('loading', '');
+        showMsg('progress', '');
+        showMsg('success', `✅ 全自动抓取完成！✅成功：${successCount}个 | ❌失败：${failCount}个 | 📌总计：${total}个`);
+        document.getElementById('copyBtn').disabled = false;
+        document.getElementById('downBtn').disabled = false;
+
+    } catch (err) {
+        showMsg('loading', '');
+        showMsg('progress', '');
+        showMsg('error', `❌ 程序异常：${err.message}，刷新页面后重试`);
+        document.getElementById('getBtn').disabled = false;
+    }
+}
+
+// 辅助函数：正则匹配数据
+function getMatchData(text, reg1, reg2, def = '暂无数据') {
+    if (!text) return def;
+    let res = reg1.exec(text);
+    if (res && res[0]) return res[0];
+    res = reg2.exec(text);
+    return res && res[0] ? res[0] : def;
+}
+
+// 辅助函数：添加失败数据
+function addFailData(asin, reason = '采集失败') {
+    let failData = { asin: asin };
+    const fields = ['bigCateRank','smallCateRank','price','monthSale','yearSale','onTime','reviewNum','rating','followNum','shipping','variantNum','newTag','newReview','goodRate','brand'];
+    fields.forEach(field => failData[field] = reason);
+    asinDataList.push(failData);
+}
+
+// 辅助函数：显示消息
+function showMsg(type, text) {
+    const el = document.getElementById(type + 'Text');
+    el.innerText = text;
+    el.style.display = text ? 'block' : 'none';
+}
+
+// 渲染表格数据
+function renderTableData() {
+    const tbody = document.getElementById('tableBody');
+    if (asinDataList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16">暂无数据，填写ASIN后点击抓取按钮即可</td></tr>';
+        return;
+    }
+    let html = '';
+    asinDataList.forEach(item => {
+        html += `<tr>
+            <td>${item.asin}</td><td>${item.bigCateRank}</td><td>${item.smallCateRank}</td><td>${item.price}</td>
+            <td>${item.monthSale}</td><td>${item.yearSale}</td><td>${item.onTime}</td><td>${item.reviewNum}</td>
+            <td>${item.rating}</td><td>${item.followNum}</td><td>${item.shipping}</td><td>${item.variantNum}</td>
+            <td>${item.newTag}</td><td>${item.newReview}</td><td>${item.goodRate}</td><td>${item.brand}</td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+// 复制到Excel（自动对齐）
+async function copyAllData() {
+    try {
+        let head = `ASIN\t大类名+排名\t小类目名+排名\t销售价(美金)\t月销量\t近1年销量\t上架时间\t累计评论数\tRating评分\t跟卖数量\tFBA/FBM\t变体数量\t新品标\t30天新增评论\t好评率(%)\t品牌名称\n`;
+        let content = asinDataList.map(item => `${item.asin}\t${item.bigCateRank}\t${item.smallCateRank}\t${item.price}\t${item.monthSale}\t${item.yearSale}\t${item.onTime}\t${item.reviewNum}\t${item.rating}\t${item.followNum}\t${item.shipping}\t${item.variantNum}\t${item.newTag}\t${item.newReview}\t${item.goodRate}\t${item.brand}`).join('\n');
+        await navigator.clipboard.writeText(head + content);
+        showMsg('success', '✅ 复制成功！打开Excel直接Ctrl+V即可！');
+    } catch (err) {
+        showMsg('error', `❌ 复制失败：${err.message}`);
+    }
+}
+
+// 下载Excel分析表
+function downloadExcel() {
+    try {
+        let excel = [['ASIN','大类名+排名','小类目名+排名','销售价(美金)','月销量','近1年销量','上架时间','累计评论数','Rating评分','跟卖数量','FBA/FBM','变体数量','新品标','30天新增评论','好评率(%)','品牌名称']];
+        asinDataList.forEach(item => excel.push([
+            item.asin,item.bigCateRank,item.smallCateRank,item.price,item.monthSale,item.yearSale,
+            item.onTime,item.reviewNum,item.rating,item.followNum,item.shipping,item.variantNum,
+            item.newTag,item.newReview,item.goodRate,item.brand
+        ]));
+        let blob = new Blob([excel.map(row=>row.join(',')).join('\n')],{type:'application/vnd.ms-excel'});
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `亚马逊竞品数据_${new Date().toLocaleDateString().replace(/\//g,'-')}.xls`;
+        a.click();
+        showMsg('success', '✅ Excel下载成功！');
+    } catch (err) {
+        showMsg('error', `❌ 下载失败：${err.message}`);
+    }
+}
+
+// 清空所有数据
+function resetAllData() {
+    asinDataList = [];
+    renderTableData();
+    document.getElementById('copyBtn').disabled = true;
+    document.getElementById('downBtn').disabled = true;
+    showMsg('success', '✅ 已清空所有数据！');
+    showMsg('error', '');
+}
+
+// 延时函数
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+</body>
+</html>
