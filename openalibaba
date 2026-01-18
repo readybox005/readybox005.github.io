@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>自动打开链接工具【智能模拟人类行为】</title>
+    <style>
+        * {margin:0;padding:0;box-sizing:border-box;}
+        body {padding:20px;font-family:微软雅黑, Arial;width:950px;margin:0 auto;line-height:1.8;}
+        h2 {color:#2c3e50;text-align:center;margin-bottom:20px;}
+        .config {margin:15px 0;padding:10px;background:#f5f7fa;border-radius:6px;}
+        .config input {width:80px;padding:6px;margin:0 5px;border:1px solid #ddd;border-radius:4px;text-align:center;}
+        .speed-btns {margin:10px 0;padding:8px;background:#e8f4f8;border-radius:6px;text-align:center;}
+        .speed-btns button {padding:6px 12px;margin:0 5px;font-size:14px;}
+        .url-section {margin:15px 0;}
+        .url-section span {color:#3498db;font-weight:bold;display:block;margin-bottom:8px;}
+        textarea {width:100%;height:180px;padding:10px;border:1px solid #ddd;border-radius:6px;margin:5px 0;resize:none;font-size:14px;}
+        button {padding:10px 20px;margin:0 8px;border:none;border-radius:6px;font-size:16px;cursor:pointer;transition:all 0.2s;}
+        button:hover {opacity:0.9;transform:scale(1.02);}
+        #startBtn {background:#27ae60;color:#fff;}
+        #stopBtn {background:#e74c3c;color:#fff;}
+        #clearPendingBtn {background:#95a5a6;color:#fff;}
+        #clearCompletedBtn {background:#6c757d;color:#fff;}
+        #status {margin-top:20px;font-size:16px;color:#e74c3c;font-weight:bold;text-align:center;}
+        .tips {margin-top:15px;padding:10px;background:#fff8e1;border:1px solid #ffeaa7;border-radius:6px;color:#6d4c41;font-size:13px;}
+        .section-divider {height:1px;background:#eee;margin:20px 0;}
+        /* 创意1：进度条样式 */
+        .progress-container {margin:15px 0;padding:10px;background:#f8f9fa;border-radius:6px;}
+        .progress-bar {height:10px;background:#e9ecef;border-radius:5px;overflow:hidden;margin:8px 0;}
+        .progress-fill {height:100%;background:#27ae60;border-radius:5px;width:0%;transition:width 0.1s linear;}
+        .progress-label {font-size:14px;color:#495057;display:flex;justify-content:space-between;}
+        /* 创意2：日志样式 */
+        .log-section {margin:15px 0;}
+        #logList {height:120px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:13px;line-height:1.6;color:#333;}
+        .log-success {color:#27ae60;}
+        .log-error {color:#e74c3c;}
+        .log-info {color:#3498db;}
+    </style>
+</head>
+<body>
+    <h2>自动打开链接工具【智能模拟人类行为】</h2>
+
+    <!-- 创意3：速度档位一键切换 -->
+    <div class="speed-btns">
+        ⚡ 执行速度档位：
+        <button id="fastSpeed">快速（间隔5-10s/观看3-5s）</button>
+        <button id="normalSpeed" style="background:#3498db;color:#fff;">普通（间隔20-60s/观看8-15s）</button>
+        <button id="slowSpeed">慢速（间隔60-120s/观看15-30s）</button>
+    </div>
+
+    <!-- 核心配置：修复输入合法性校验 -->
+    <div class="config">
+        ✅ 打开下一个链接的间隔时间（随机区间）：<input type="number" id="intervalMinSec" value="20" min="1" step="1"> 秒 至 <input type="number" id="intervalMaxSec" value="60" min="1" step="1"> 秒
+        ✅ 页面加载后观看并关闭的总耗时（随机区间）：<input type="number" id="watchMinSec" value="8" min="1" step="1"> 秒 至 <input type="number" id="watchMaxSec" value="15" min="1" step="1"> 秒
+    </div>
+
+    <!-- 创意1：进度条可视化 -->
+    <div class="progress-container">
+        <div class="progress-label">
+            <span>当前链接观看进度：</span>
+            <span id="watchProgressText">0% (0/0秒)</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="watchProgressBar"></div>
+        </div>
+        <div class="progress-label">
+            <span>下一个链接间隔进度：</span>
+            <span id="intervalProgressText">0% (0/0秒)</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="intervalProgressBar" style="background:#3498db;"></div>
+        </div>
+    </div>
+
+    <!-- 待执行链接 -->
+    <div class="url-section">
+        <span>📌 待执行链接（每行1个，执行后自动移除）：</span>
+        <textarea id="pendingUrlList" placeholder="示例：
+https://www.baidu.com
+https://uutool.cn/url-open
+https://www.qq.com
+每行一个链接即可"></textarea>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- 已完成链接 -->
+    <div class="url-section">
+        <span>✅ 已完成链接（自动累计，按执行顺序）：</span>
+        <textarea id="completedUrlList" placeholder="执行后的链接会自动显示在这里..." readonly></textarea>
+    </div>
+
+    <!-- 创意4：执行日志 -->
+    <div class="log-section">
+        <span>📝 执行日志（可复制）：</span>
+        <div id="logList"></div>
+        <button id="exportLogBtn" style="margin-top:8px;padding:6px 12px;font-size:14px;">📤 导出日志</button>
+    </div>
+
+    <div style="text-align:center;margin:10px 0;">
+        <button id="startBtn">▶️ 开始执行</button>
+        <button id="stopBtn">⏹️ 停止执行</button>
+        <button id="clearPendingBtn">🗑️ 清空待执行</button>
+        <button id="clearCompletedBtn">🗑️ 清空已完成</button>
+    </div>
+
+    <div id="status">💡 就绪：请填写待执行链接后点击【开始执行】</div>
+
+    <div class="tips">
+        ⚠️ 使用须知：1.浏览器会拦截弹窗，首次点击会提示【允许弹窗】，请点击允许；2.仅能关闭脚本自动打开的标签页，手动打开的不会关；3.区间最小值不能大于最大值，随机数会自动在区间内取值；
+        <br>💡 创意功能：支持空格开始/停止、Ctrl+P清空待执行、Ctrl+C清空已完成；自动保存列表，刷新不丢失；模拟人类鼠标移动/点击行为
+    </div>
+
+    <script>
+        // 获取页面元素
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearPendingBtn = document.getElementById('clearPendingBtn');
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+        const intervalMinSec = document.getElementById('intervalMinSec');
+        const intervalMaxSec = document.getElementById('intervalMaxSec');
+        const watchMinSec = document.getElementById('watchMinSec');
+        const watchMaxSec = document.getElementById('watchMaxSec');
+        const pendingUrlList = document.getElementById('pendingUrlList');
+        const completedUrlList = document.getElementById('completedUrlList');
+        const status = document.getElementById('status');
+        // 创意1：进度条元素
+        const watchProgressBar = document.getElementById('watchProgressBar');
+        const watchProgressText = document.getElementById('watchProgressText');
+        const intervalProgressBar = document.getElementById('intervalProgressBar');
+        const intervalProgressText = document.getElementById('intervalProgressText');
+        // 创意3：速度档位元素
+        const fastSpeed = document.getElementById('fastSpeed');
+        const normalSpeed = document.getElementById('normalSpeed');
+        const slowSpeed = document.getElementById('slowSpeed');
+        // 创意4：日志元素
+        const logList = document.getElementById('logList');
+        const exportLogBtn = document.getElementById('exportLogBtn');
+
+        // 全局变量
+        let timeout = null;
+        let isRunning = false;
+        let childWindows = [];
+        // 进度条定时器
+        let watchProgressTimer = null;
+        let intervalProgressTimer = null;
+        // 创意5：本地存储键名
+        const STORAGE_KEY = 'autoUrlOpenerData';
+
+        // 修复1：强化随机数生成，确保数字类型+区间合法
+        function getRandomNumber(min, max) {
+            const minNum = Number(min) || 1;
+            const maxNum = Number(max) || 1;
+            // 确保最小值≤最大值
+            const finalMin = Math.min(minNum, maxNum);
+            const finalMax = Math.max(minNum, maxNum);
+            const random = Math.random() * (finalMax - finalMin) + finalMin;
+            return Math.round(random * 10) / 10; // 保留1位小数
+        }
+
+        // 创意6：模拟人类鼠标移动（兼容跨域）
+        function simulateMouseMove(targetWin, duration) {
+            try {
+                const startTime = Date.now();
+                const moveInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed >= duration * 1000) {
+                        clearInterval(moveInterval);
+                        return;
+                    }
+                    // 随机生成鼠标位置
+                    const x = Math.random() * targetWin.innerWidth;
+                    const y = Math.random() * targetWin.innerHeight;
+                    // 模拟鼠标移动（跨域时降级）
+                    try {
+                        const event = new MouseEvent('mousemove', {
+                            clientX: x,
+                            clientY: y,
+                            bubbles: true
+                        });
+                        targetWin.document.dispatchEvent(event);
+                    } catch (e) {
+                        // 跨域无法操作DOM，无操作即可
+                    }
+                }, 300);
+            } catch (e) {}
+        }
+
+        // 创意7：模拟随机点击（兼容跨域）
+        function simulateRandomClick(targetWin, duration) {
+            // 每隔2-3秒随机点击一次
+            const clickTimes = Math.floor(duration / 3);
+            let clickCount = 0;
+            const clickInterval = setInterval(() => {
+                if (clickCount >= clickTimes) {
+                    clearInterval(clickInterval);
+                    return;
+                }
+                try {
+                    const x = Math.random() * targetWin.innerWidth;
+                    const y = Math.random() * targetWin.innerHeight;
+                    // 模拟点击（跨域时降级）
+                    try {
+                        const event = new MouseEvent('click', {
+                            clientX: x,
+                            clientY: y,
+                            bubbles: true
+                        });
+                        targetWin.document.dispatchEvent(event);
+                    } catch (e) {}
+                } catch (err) {}
+                clickCount++;
+            }, 2000 + Math.random() * 1000);
+        }
+
+        // 创意8：链接有效性检测
+        async function checkUrlValidity(url) {
+            try {
+                const response = await fetch(url, {
+                    method: 'HEAD',
+                    mode: 'no-cors', // 兼容跨域
+                    timeout: 5000
+                });
+                return true;
+            } catch (e) {
+                addLog(`⚠️ 链接有效性检测失败：${url}（可能跨域/无法访问）`, 'error');
+                return false;
+            }
+        }
+
+        // 修复2：进度条更新函数
+        function updateProgressBar(bar, textEl, current, total, label) {
+            const percent = Math.min(Math.round((current / total) * 100), 100);
+            bar.style.width = `${percent}%`;
+            textEl.textContent = `${percent}% (${current.toFixed(1)}/${total.toFixed(1)}秒)`;
+            if (label) textEl.previousElementSibling.textContent = label;
+        }
+
+        // 清空进度条
+        function clearProgressBars() {
+            clearInterval(watchProgressTimer);
+            clearInterval(intervalProgressTimer);
+            watchProgressBar.style.width = '0%';
+            intervalProgressBar.style.width = '0%';
+            watchProgressText.textContent = '0% (0/0秒)';
+            intervalProgressText.textContent = '0% (0/0秒)';
+        }
+
+        // 兼容跨域的滚动到底部逻辑（优化）
+        function scrollToBottom(targetWin, scrollTime) {
+            try {
+                let totalHeight = 0;
+                if (targetWin.document) {
+                    totalHeight = Math.max(
+                        targetWin.document.body.scrollHeight,
+                        targetWin.document.documentElement.scrollHeight
+                    ) - targetWin.innerHeight;
+                }
+                totalHeight = Math.max(totalHeight, 0);
+
+                const startTime = Date.now();
+                const scrollInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / (scrollTime * 1000), 1);
+                    try {
+                        targetWin.scrollTo({
+                            top: totalHeight * progress,
+                            behavior: 'smooth'
+                        });
+                    } catch (e) {
+                        targetWin.scrollTo(0, totalHeight * progress);
+                    }
+                    if (progress >= 1) clearInterval(scrollInterval);
+                }, 50);
+            } catch (e) {
+                const scrollStep = 1000;
+                let currentScroll = 0;
+                const scrollInterval = setInterval(() => {
+                    currentScroll += scrollStep;
+                    try {
+                        targetWin.scrollTo(0, currentScroll);
+                    } catch (err) {}
+                    if (currentScroll >= scrollTime * 1000) {
+                        clearInterval(scrollInterval);
+                        try {
+                            targetWin.scrollTo(0, 999999);
+                        } catch (err) {}
+                    }
+                }, 50);
+            }
+        }
+
+        // 兼容跨域的页面加载判断
+        function waitForPageLoad(targetWin) {
+            return new Promise(resolve => {
+                const maxWaitTime = 10000;
+                let waitTime = 0;
+
+                const checkLoad = () => {
+                    waitTime += 300;
+                    try {
+                        if (targetWin.document?.readyState === 'complete') {
+                            resolve();
+                        } else if (waitTime >= maxWaitTime) {
+                            resolve();
+                        } else {
+                            setTimeout(checkLoad, 300);
+                        }
+                    } catch (e) {
+                        setTimeout(resolve, 2000);
+                    }
+                };
+                checkLoad();
+            });
+        }
+
+        // 更新链接列表
+        function updateUrlLists(executedUrl) {
+            const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
+            const remainingPending = pendingUrls.filter(url => url.trim() !== executedUrl.trim());
+            pendingUrlList.value = remainingPending.join('\n');
+
+            const completedUrls = completedUrlList.value.split('\n').filter(item => item.trim());
+            completedUrls.push(executedUrl.trim());
+            completedUrlList.value = completedUrls.join('\n');
+
+            // 创意5：自动保存到本地存储
+            saveToLocalStorage();
+        }
+
+        // 创意4：添加日志函数
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logItem = document.createElement('div');
+            logItem.className = `log-${type}`;
+            logItem.innerHTML = `[${time}] ${message}`;
+            logList.appendChild(logItem);
+            // 滚动到最新日志
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        // 创意5：从本地存储加载
+        function loadFromLocalStorage() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                const parsed = JSON.parse(data);
+                pendingUrlList.value = parsed.pending || '';
+                completedUrlList.value = parsed.completed || '';
+                addLog('✅ 已从本地加载历史链接列表', 'success');
+            }
+        }
+
+        // 创意5：保存到本地存储
+        function saveToLocalStorage() {
+            const data = {
+                pending: pendingUrlList.value,
+                completed: completedUrlList.value,
+                logs: logList.innerHTML
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // 创意4：导出日志
+        function exportLog() {
+            const logText = logList.innerText;
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `自动打开链接日志_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // 核心执行方法（修复+创意）
+        async function runTask() {
+            if (!isRunning) return;
+
+            const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
+            if (pendingUrls.length === 0) {
+                isRunning = false;
+                clearProgressBars();
+                const completedCount = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+                status.innerHTML = `✅ 执行完成：共完成 ${completedCount} 个链接，待执行列表为空！`;
+                status.style.color = "#27ae60";
+                addLog(`✅ 执行完成：共完成${completedCount}个链接`, 'success');
+                return;
+            }
+
+            const currentUrl = pendingUrls[0].trim();
+            // 创意8：先检测链接有效性
+            await checkUrlValidity(currentUrl);
+
+            try {
+                const completedCount = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+                status.innerHTML = `🔄 正在执行第 ${completedCount + 1} 个链接 → ${currentUrl}（待执行剩余：${pendingUrls.length - 1}）`;
+                status.style.color = "#2980b9";
+                addLog(`🔄 开始执行第${completedCount + 1}个链接：${currentUrl}`, 'info');
+                
+                const newWin = window.open('about:blank', '_blank');
+                if (!newWin) {
+                    status.innerHTML = "❌ 浏览器拦截了弹窗！请点击【允许此网站的弹窗】后重试";
+                    status.style.color = "#e74c3c";
+                    addLog("❌ 浏览器拦截弹窗，执行终止", 'error');
+                    isRunning = false;
+                    return;
+                }
+                childWindows.push(newWin);
+                newWin.location.href = currentUrl;
+
+                await waitForPageLoad(newWin);
+
+                // 修复3：显式转数字，确保区间正确
+                const randomWatchTime = getRandomNumber(watchMinSec.value, watchMaxSec.value);
+                addLog(`⌛ 本次观看耗时：${randomWatchTime}秒（滚动占80%，停留占20%）`, 'info');
+                
+                // 启动观看进度条
+                let currentWatchTime = 0;
+                clearInterval(watchProgressTimer);
+                watchProgressTimer = setInterval(() => {
+                    currentWatchTime += 0.1;
+                    updateProgressBar(watchProgressBar, watchProgressText, currentWatchTime, randomWatchTime, '当前链接观看进度：');
+                    if (currentWatchTime >= randomWatchTime) {
+                        clearInterval(watchProgressTimer);
+                    }
+                }, 100);
+
+                const scrollTime = randomWatchTime * 0.8;
+                scrollToBottom(newWin, scrollTime);
+                // 创意6：模拟鼠标移动
+                simulateMouseMove(newWin, scrollTime);
+                // 创意7：模拟随机点击
+                simulateRandomClick(newWin, randomWatchTime);
+
+                setTimeout(() => {
+                    try {
+                        newWin.close();
+                        childWindows = childWindows.filter(win => win !== newWin);
+                        updateUrlLists(currentUrl);
+                        const newCompletedCount = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+                        status.innerHTML = `✅ 已完成：${currentUrl}（累计完成：${newCompletedCount}，待执行剩余：${pendingUrls.length - 1}，本次观看耗时：${randomWatchTime}秒）`;
+                        addLog(`✅ 完成执行：${currentUrl}（累计完成${newCompletedCount}个）`, 'success');
+                    } catch (e) {
+                        status.innerHTML = `⚠️ 跨域限制：无法关闭 ${currentUrl} 标签页，已更新链接列表（本次观看耗时：${randomWatchTime}秒）`;
+                        addLog(`⚠️ 跨域限制：无法关闭${currentUrl}标签页`, 'error');
+                        updateUrlLists(currentUrl);
+                    }
+
+                    // 生成下一个间隔时间
+                    const randomInterval = getRandomNumber(intervalMinSec.value, intervalMaxSec.value);
+                    addLog(`⌛ 下一个链接将在${randomInterval}秒后执行`, 'info');
+                    status.innerHTML += ` → 下一个链接将在 ${randomInterval} 秒后执行`;
+
+                    // 启动间隔进度条
+                    let currentIntervalTime = 0;
+                    clearInterval(intervalProgressTimer);
+                    intervalProgressTimer = setInterval(() => {
+                        currentIntervalTime += 0.1;
+                        updateProgressBar(intervalProgressBar, intervalProgressText, currentIntervalTime, randomInterval, '下一个链接间隔进度：');
+                        if (currentIntervalTime >= randomInterval) {
+                            clearInterval(intervalProgressTimer);
+                        }
+                    }, 100);
+
+                    timeout = setTimeout(runTask, randomInterval * 1000);
+                }, randomWatchTime * 1000);
+
+            } catch (err) {
+                status.innerHTML = `❌ 执行失败：${currentUrl} → ${err.message}，已移入已完成列表`;
+                status.style.color = "#e74c3c";
+                addLog(`❌ 执行失败：${currentUrl} - ${err.message}`, 'error');
+                updateUrlLists(currentUrl);
+
+                const randomInterval = getRandomNumber(intervalMinSec.value, intervalMaxSec.value);
+                timeout = setTimeout(runTask, randomInterval * 1000);
+                status.innerHTML += ` → 下一个链接将在 ${randomInterval} 秒后执行`;
+            }
+        }
+
+        // 输入合法性校验
+        function validateInputs() {
+            const intervalMin = Number(intervalMinSec.value);
+            const intervalMax = Number(intervalMaxSec.value);
+            const watchMin = Number(watchMinSec.value);
+            const watchMax = Number(watchMaxSec.value);
+
+            if (intervalMin > intervalMax) {
+                status.innerHTML = "❌ 间隔时间最小值不能大于最大值！";
+                status.style.color = "#e74c3c";
+                return false;
+            }
+            if (watchMin > watchMax) {
+                status.innerHTML = "❌ 观看时间最小值不能大于最大值！";
+                status.style.color = "#e74c3c";
+                return false;
+            }
+            if (intervalMin < 1 || watchMin < 1) {
+                status.innerHTML = "❌ 时间不能小于1秒！";
+                status.style.color = "#e74c3c";
+                return false;
+            }
+            return true;
+        }
+
+        // 事件监听
+        startBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            const pendingText = pendingUrlList.value.trim();
+            if (!pendingText) {
+                status.innerHTML = "❌ 请先填写待执行链接！";
+                status.style.color = "#e74c3c";
+                return;
+            }
+            if (!validateInputs()) return;
+
+            isRunning = true;
+            status.innerHTML = "▶️ 已开始执行！请允许浏览器弹窗";
+            status.style.color = "#27ae60";
+            addLog("▶️ 开始执行任务", 'success');
+            runTask();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            clearTimeout(timeout);
+            clearProgressBars();
+            childWindows.forEach(win => {
+                try { win.close(); } catch (e) {}
+            });
+            childWindows = [];
+            isRunning = false;
+            const pendingCount = pendingUrlList.value.split('\n').filter(item => item.trim()).length;
+            const completedCount = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+            status.innerHTML = `⏹️ 已手动停止！累计完成：${completedCount}，待执行剩余：${pendingCount}`;
+            status.style.color = "#e74c3c";
+            addLog(`⏹️ 手动停止：累计完成${completedCount}个，剩余${pendingCount}个`, 'info');
+        });
+
+        clearPendingBtn.addEventListener('click', () => {
+            pendingUrlList.value = '';
+            saveToLocalStorage();
+            status.innerHTML = "🗑️ 已清空待执行链接！";
+            status.style.color = "#3498db";
+            addLog("🗑️ 清空待执行链接列表", 'info');
+        });
+
+        clearCompletedBtn.addEventListener('click', () => {
+            completedUrlList.value = '';
+            saveToLocalStorage();
+            status.innerHTML = "🗑️ 已清空已完成链接！";
+            status.style.color = "#3498db";
+            addLog("🗑️ 清空已完成链接列表", 'info');
+        });
+
+        // 创意3：速度档位切换
+        fastSpeed.addEventListener('click', () => {
+            intervalMinSec.value = 5;
+            intervalMaxSec.value = 10;
+            watchMinSec.value = 3;
+            watchMaxSec.value = 5;
+            addLog("⚡ 切换到快速执行档位", 'info');
+        });
+
+        normalSpeed.addEventListener('click', () => {
+            intervalMinSec.value = 20;
+            intervalMaxSec.value = 60;
+            watchMinSec.value = 8;
+            watchMaxSec.value = 15;
+            addLog("⚡ 切换到普通执行档位", 'info');
+        });
+
+        slowSpeed.addEventListener('click', () => {
+            intervalMinSec.value = 60;
+            intervalMaxSec.value = 120;
+            watchMinSec.value = 15;
+            watchMaxSec.value = 30;
+            addLog("⚡ 切换到慢速执行档位", 'info');
+        });
+
+        // 创意4：导出日志
+        exportLogBtn.addEventListener('click', () => {
+            exportLog();
+            addLog("📤 导出执行日志成功", 'success');
+        });
+
+        // 创意2：快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // 空格：开始/停止
+            if (e.code === 'Space') {
+                e.preventDefault();
+                isRunning ? stopBtn.click() : startBtn.click();
+            }
+            // Ctrl+P：清空待执行
+            if (e.ctrlKey && e.code === 'KeyP') {
+                e.preventDefault();
+                clearPendingBtn.click();
+            }
+            // Ctrl+C：清空已完成
+            if (e.ctrlKey && e.code === 'KeyC') {
+                e.preventDefault();
+                clearCompletedBtn.click();
+            }
+        });
+
+        // 页面加载时加载本地存储
+        window.addEventListener('load', () => {
+            loadFromLocalStorage();
+        });
+
+        // 自动保存日志
+        setInterval(saveToLocalStorage, 5000);
+    </script>
+</body>
+</html>
