@@ -2,337 +2,335 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>亚马逊竞品抓取-完美解决跨域版(适配卖家精灵)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的工具导航主页</title>
     <style>
-        * {margin: 8px;padding: 0;box-sizing: border-box;font-size: 14px;}
-        body {font-family: 微软雅黑, Arial;max-width: 1600px;margin: 20px auto;background: #f5f5f5;}
-        .btn {padding: 12px 20px;border: none;border-radius: 6px;margin: 5px;cursor: pointer;font-weight: bold;color: #fff;}
-        #getBtn {background: #1677ff;}
-        #getBtn:disabled {background: #99c2ff;cursor: not-allowed;}
-        #copyBtn {background: #00b42a;}
-        #copyBtn:disabled {background: #86e89c;cursor: not-allowed;}
-        #downBtn {background: #ff7d00;}
-        #downBtn:disabled {background: #ffc299;cursor: not-allowed;}
-        #resetBtn {background: #666666;}
-        #tips {color: #ff4d4f;padding: 10px;background: #fff8f8;border: 1px solid #ffccc7;border-radius: 6px;margin-bottom: 15px;}
-        .setting-box {margin:15px 0;padding:15px;background:#fff;border-radius:6px;border:1px solid #eee;}
-        .setting-group {display: flex;flex-wrap: wrap;gap: 15px;margin-bottom: 10px;}
-        .setting-item {display: flex;align-items: center;}
-        .setting-item label {margin-right: 8px;font-weight: bold;}
-        .setting-item input {width: 100px;padding: 6px;border: 1px solid #ccc;border-radius: 4px;}
-        .asin-box {margin:15px 0;padding:10px;background:#fff;border-radius:6px;border:1px solid #eee;}
-        .asin-box textarea {width:100%;height:120px;padding:10px;border:1px solid #ccc;border-radius:4px;resize:none;outline:none;font-size:14px;}
-        .asin-box p {color:#666;margin-top:8px;font-size:13px;}
-        table {width: 100%;border-collapse: collapse;background: #fff;margin-top:15px;}
-        th,td {border:1px solid #ccc;padding:8px;text-align:center;}
-        th {background:#f0f7ff;font-weight:bold;}
-        tr:nth-child(even) {background:#f9fcff;}
-        .success {color:#00b42a;padding:10px;margin-top:10px;border-radius:4px;}
-        .loading {color:#1677ff;padding:10px;margin-top:10px;border-radius:4px;}
-        .error {color:#ff4d4f;padding:8px;margin-top:5px;font-size:13px;border-radius:4px;}
-        .progress {color:#1677ff;padding:8px;margin-top:5px;font-weight:bold;border-radius:4px;}
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 头部样式 */
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .logo span {
+            color: #3498db;
+        }
+
+        /* 搜索框样式 */
+        .search-box {
+            display: flex;
+            width: 400px;
+            max-width: 100%;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px 0 0 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #3498db;
+        }
+
+        .search-btn {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .search-btn:hover {
+            background-color: #2980b9;
+        }
+
+        /* 主容器样式 */
+        .main-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 分类导航样式 */
+        .nav-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .category-card {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        .category-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+
+        /* 工具列表样式 */
+        .tool-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .tool-item a {
+            display: block;
+            padding: 10px 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .tool-item a:hover {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        /* 常用工具快捷入口 */
+        .quick-tools {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .quick-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+
+        .quick-tool-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .quick-tool-item a {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #e8f4f8;
+            color: #3498db;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .quick-tool-item a:hover {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        /* 底部样式 */
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            color: #718096;
+            font-size: 14px;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 50px;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .tool-list {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-tool-list {
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="tips">✅ 完美解决跨域版 | 已修复 frame 跨域读取限制 | 稳定采集卖家精灵数据</div>
-    
-    <div class="setting-box">
-        <label><b>⏱️ 等待时间设置（单位：秒）</b></label>
-        <div class="setting-group">
-            <div class="setting-item">
-                <label for="pageLoadWait">亚马逊页面加载：</label>
-                <input type="number" id="pageLoadWait" min="1" max="60" value="3">
-                <span style="margin-left:5px;">秒</span>
-            </div>
-            <div class="setting-item">
-                <label for="pluginLoadWait">卖家精灵插件加载：</label>
-                <input type="number" id="pluginLoadWait" min="1" max="60" value="8">
-                <span style="margin-left:5px;">秒</span>
-            </div>
-            <div class="setting-item">
-                <label for="timeoutExtend">超时延长时间：</label>
-                <input type="number" id="timeoutExtend" min="1" max="30" value="3">
-                <span style="margin-left:5px;">秒</span>
+    <!-- 头部：Logo + 搜索框 -->
+    <header>
+        <div class="header-container">
+            <div class="logo">我的<span>工具</span>导航</div>
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="搜索工具...">
+                <button class="search-btn">搜索</button>
             </div>
         </div>
-        <p style="color:#666;font-size:13px;">💡 提示：网络较慢时，适当增大数值即可</p>
-    </div>
-    
-    <div class="asin-box">
-        <label><b>📝 填写竞品ASIN（每行1个，仅支持美国站10位ASIN）</b></label>
-        <textarea id="asinInput" placeholder="例如：
-B09XXXXXXX
-B08XXXXXXX
-B07XXXXXXX">B0FK3CLKNJ
-B0FK3CB9P1
-B0FK3BVZQC
-B0FK3FM573</textarea>
-        <p>✅ 规则：每行1个美国站ASIN（10位字母/数字），自动批量打开+采集+关页</p>
-    </div>
+    </header>
 
-    <button class="btn" id="getBtn">✅ 全自动批量抓取（无跨域版）</button>
-    <button class="btn" id="resetBtn">🆑 清空所有数据</button>
-    <button class="btn" id="copyBtn" disabled>📋 复制到Excel(自动对齐)</button>
-    <button class="btn" id="downBtn" disabled>💾 下载Excel分析表</button>
+    <!-- 主内容区 -->
+    <main class="main-container">
+        <!-- 常用工具快捷入口 -->
+        <section class="quick-tools">
+            <h3 class="quick-title">常用工具</h3>
+            <ul class="quick-tool-list">
+                <li class="quick-tool-item"><a href="https://www.baidu.com" target="_blank">百度搜索</a></li>
+                <li class="quick-tool-item"><a href="https://mail.qq.com" target="_blank">QQ邮箱</a></li>
+                <li class="quick-tool-item"><a href="https://docs.qq.com" target="_blank">腾讯文档</a></li>
+                 <li class="quick-tool-item"><a href="https://www.doubao.com" target="_blank">豆包</a></li>
+                 <li class="quick-tool-item"><a href="https://www.coze.cn" target="_blank">Coze扣子</a></li>
 
-    <div id="loadingText" class="loading" style="display: none;"></div>
-    <div id="progressText" class="progress" style="display: none;"></div>
-    <div id="errorText" class="error" style="display: none;"></div>
-    <div id="successText" class="success" style="display: none;"></div>
+            </ul>
+        </section>
 
-    <table id="dataTable">
-        <thead>
-            <tr>
-                <th>商品ASIN</th>
-                <th>大类名+排名</th>
-                <th>小类目名+排名</th>
-                <th>销售价(美金)</th>
-                <th>月销量</th>
-                <th>近1年销量</th>
-                <th>上架时间</th>
-                <th>累计评论数</th>
-                <th>Rating评分</th>
-                <th>跟卖数量</th>
-                <th>FBA/FBM</th>
-                <th>变体数量</th>
-                <th>新品标</th>
-                <th>30天新增评论</th>
-                <th>好评率(%)</th>
-                <th>品牌名称</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            <tr><td colspan="16">暂无数据，填写ASIN后点击上方抓取按钮即可</td></tr>
-        </tbody>
-    </table>
+        <!-- 分类导航区 -->
+        <section class="nav-categories">
+            <!-- 分类1：国际站专区 -->
+            <div class="category-card">
+                <h3 class="category-title">国际站专区</h3>
+                <ul class="tool-list">
+                    <li class="tool-item"><a href="https://www.canva.cn" target="_blank">面单制作</a></li>
+                    <li class="tool-item"><a href="https://fx.cmbchina.com/hq/" target="_blank">汇率查询</a></li>
+                    <li class="tool-item"><a href="https://www.dhl.com/cn-zh/home.html" target="_blank">DHL官网</a></li>
 
-<script>
-let asinDataList = [];
-let amazonPageData = '';
-const AMAZON_US_URL = "https://www.amazon.com/dp/";
-const MAX_RETRIES = 3;
+                    <li class="tool-item"><a href="https://convertio.co/zh/" target="_blank">Convertio格式转换</a></li>
+                </ul>
+            </div>
 
-// 绑定事件
-document.getElementById('getBtn').addEventListener('click', startGrabAsinData);
-document.getElementById('copyBtn').addEventListener('click', copyAllData);
-document.getElementById('downBtn').addEventListener('click', downloadExcel);
-document.getElementById('resetBtn').addEventListener('click', resetAllData);
+            <!-- 分类2：亚马逊专区 -->
+            <div class="category-card">
+                <h3 class="category-title">亚马逊专区</h3>
+                <ul class="tool-list">
+                    <li class="tool-item"><a href="https://codepen.io" target="_blank">CodePen</a></li>
+                    <li class="tool-item"><a href="https://jsfiddle.net" target="_blank">JSFiddle</a></li>
+                    <li class="tool-item"><a href="https://tool.oschina.net" target="_blank">OSCHINA工具集</a></li>
+                    <li class="tool-item"><a href="https://json.cn" target="_blank">JSON格式化</a></li>
+                </ul>
+            </div>
 
-// ✅ 核心修复：跨域读取逻辑 - 反向接收数据，彻底避开拦截
-async function startGrabAsinData() {
-    try {
-        const pageLoadWait = parseInt(document.getElementById('pageLoadWait').value) * 1000;
-        const pluginLoadWait = parseInt(document.getElementById('pluginLoadWait').value) * 1000;
-        const timeoutExtend = parseInt(document.getElementById('timeoutExtend').value) * 1000;
+            <!-- 分类3：独立站专区 -->
+            <div class="category-card">
+                <h3 class="category-title">独立站专区</h3>
+                <ul class="tool-list">
+                    <li class="tool-item"><a href="#" target="_blank">DHL单号查询</a></li>
+                    <li class="tool-item"><a href="#" target="_blank">Waybill条形码生成</a></li>
+                    <li class="tool-item"><a href="#" target="_blank">JD Number工具</a></li>
+                    <li class="tool-item"><a href="https://www.dhl.com/cn-zh/home.html" target="_blank">DHL官网</a></li>
+                </ul>
+            </div>
 
-        if (isNaN(pageLoadWait) || isNaN(pluginLoadWait) || isNaN(timeoutExtend)) {
-            showMsg('error', '❌ 请填写有效的等待时间！');
-            return;
-        }
+            <!-- 分类4：实用小工具 -->
+            <div class="category-card">
+                <h3 class="category-title">实用小工具</h3>
+                <ul class="tool-list">
+                     <li class="tool-item"><a href="https://www.remove.bg" target="_blank">Remove.bg抠图</a></li>
+                    <li class="tool-item"><a href="https://www.bejson.com" target="_blank">BeJSON</a></li>
+                    <li class="tool-item"><a href="https://www.ip138.com" target="_blank">IP查询</a></li>
+                    <li class="tool-item"><a href="https://time.is/zh-CN" target="_blank">全球时间</a></li>
+                </ul>
+            </div>
+        </section>
+    </main>
 
-        let asinText = document.getElementById('asinInput').value.trim();
-        let asinList = asinText.split('\n').map(asin => asin.trim()).filter(asin => asin);
-        if (asinList.length === 0) {
-            showMsg('error', '❌ 请填写至少1个ASIN！');
-            return;
-        }
+    <!-- 底部 -->
+    <footer>
+        <p>我的工具导航主页 © 2026 版权所有</p>
+    </footer>
 
-        asinDataList = [];
-        showMsg('loading', `🔍 开始抓取，已开启防跨域模式，耐心等待...`);
-        showMsg('progress', `📊 待抓取：${asinList.length} 个ASIN`);
-        showMsg('error', '');
-        showMsg('success', '');
-        document.getElementById('getBtn').disabled = true;
-        document.getElementById('copyBtn').disabled = true;
-        document.getElementById('downBtn').disabled = true;
+    <!-- 简单的搜索功能JS -->
+    <script>
+        // 获取搜索相关元素
+        const searchInput = document.querySelector('.search-input');
+        const searchBtn = document.querySelector('.search-btn');
+        const toolLinks = document.querySelectorAll('.tool-item a, .quick-tool-item a');
 
-        let successCount = 0;
-        let failCount = 0;
-        const total = asinList.length;
-
-        for (let i = 0; i < total; i++) {
-            let asin = asinList[i];
-            let current = i + 1;
-            let percent = Math.round((current / total) * 100);
-            showMsg('progress', `📊 进度 ${current}/${total} (${percent}%) | 当前ASIN：${asin}`);
-
-            if (!/^[A-Z0-9]{10}$/.test(asin)) {
-                failCount++;
-                addFailData(asin, 'ASIN格式无效');
-                renderTableData();
-                continue;
-            }
-
-            let amazonWin = window.open(`${AMAZON_US_URL}${asin}`, '_blank');
-            if (!amazonWin) {
-                failCount++;
-                addFailData(asin, '浏览器拦截弹窗，请允许弹窗');
-                showMsg('error', `⚠️ ${asin}：浏览器拦截弹窗！`);
-                renderTableData();
-                continue;
-            }
-
-            try {
-                showMsg('loading', `🔍 ${asin} - 等待页面加载...`);
-                await sleep(pageLoadWait);
-                let loadCheckCount = 0;
-                while (amazonWin.document.readyState !== 'complete' && loadCheckCount < 3) {
-                    await sleep(timeoutExtend);
-                    loadCheckCount++;
-                }
-
-                showMsg('loading', `🔍 ${asin} - 等待卖家精灵加载数据...`);
-                await sleep(pluginLoadWait);
-
-                // ✅ ✅ ✅ 核心修复：替换原来的 amazonWin.document.body.innerText 读取方式
-                // 改用 亚马逊页面主动注入脚本，把数据传回当前页面，彻底无跨域
-                amazonPageData = '';
-                const injectScript = `
-                    (function(){
-                        const data = document.body.innerText;
-                        window.opener.amazonPageData = data;
-                        window.opener = null;
-                    })()
-                `;
-                // 注入脚本到亚马逊页面，反向传值
-                amazonWin.eval(injectScript);
-                await sleep(500);
-
-                let retryCount = 0;
-                while (amazonPageData.length < 1000 && retryCount < MAX_RETRIES) {
-                    amazonWin.eval(injectScript);
-                    await sleep(timeoutExtend);
-                    retryCount++;
-                }
-
-                if (amazonPageData.length < 1000) {
-                    throw new Error('卖家精灵数据未加载，网络慢请增加等待时间');
-                }
-
-                let asinData = {
-                    asin: asin,
-                    bigCateRank: getMatchData(amazonPageData, /Best Seller in (.*?) \((\d+,?\d*)\)/, /大类[:：](.*?)[:：](\d+,?\d*)/),
-                    smallCateRank: getMatchData(amazonPageData, /小类[:：](.*?)[:：](\d+,?\d*)/, /细分类目[:：](.*?)[:：](\d+,?\d*)/),
-                    price: getMatchData(amazonPageData, /\$(\d+\.\d{2})(\s*-\s*\$(\d+\.\d{2}))?/, /售价[:：]\s*(\d+\.\d{2})\s*美金/),
-                    monthSale: getMatchData(amazonPageData, /月销量[:：]\s*(\d+,?\d*)/, /月销[:：]\s*(\d+,?\d*)/),
-                    yearSale: getMatchData(amazonPageData, /年销量[:：]\s*(\d+,?\d*)/, /近1年销量[:：]\s*(\d+,?\d*)/),
-                    onTime: getMatchData(amazonPageData, /上架时间[:：]\s*(\d{4}-\d{1,2}-\d{1,2})/, /Listing创建[:：]\s*(\d{4}-\d{1,2}-\d{1,2})/),
-                    reviewNum: getMatchData(amazonPageData, /全球评论[:：]\s*(\d+,?\d*)/, /评论数[:：]\s*(\d+,?\d*)/),
-                    rating: getMatchData(amazonPageData, /评分[:：]\s*(\d\.\d)/, /Rating[:：]\s*(\d\.\d)/),
-                    followNum: getMatchData(amazonPageData, /跟卖[:：]\s*(\d+)/, /跟卖数量[:：]\s*(\d+)/, '0'),
-                    shipping: getMatchData(amazonPageData, /发货方式[:：]\s*(FBA|FBM)/, /物流[:：]\s*(FBA|FBM)/, '未知'),
-                    variantNum: getMatchData(amazonPageData, /变体[:：]\s*(\d+)/, /变体数量[:：]\s*(\d+)/, '1'),
-                    newTag: getMatchData(amazonPageData, /新品标[:：]\s*(有|无)/, /New Release[:：]\s*(是|否)/, '无'),
-                    newReview: getMatchData(amazonPageData, /30天新增评论[:：]\s*(\d+,?\d*)/, /近期评论[:：]\s*(\d+,?\d*)/, '0'),
-                    goodRate: getMatchData(amazonPageData, /好评率[:：]\s*(\d+%)/, /满意度[:：]\s*(\d+%)/, '暂无'),
-                    brand: getMatchData(amazonPageData, /品牌[:：]\s*(.+)/, /Brand[:：]\s*(.+)/, '无备案')
-                };
-
-                let validData = false;
-                Object.values(asinData).forEach(val => {
-                    if (val && val !== '暂无数据' && val !== '0' && val !== '未知') validData = true;
+        // 搜索功能
+        function searchTools() {
+            const keyword = searchInput.value.trim().toLowerCase();
+            if (!keyword) {
+                // 清空搜索时显示所有工具
+                toolLinks.forEach(link => {
+                    link.parentElement.style.display = 'block';
                 });
-
-                if (validData) {
-                    asinDataList.push(asinData);
-                    successCount++;
-                } else {
-                    throw new Error('未采集到有效数据');
-                }
-
-            } catch (err) {
-                failCount++;
-                addFailData(asin, err.message);
-                showMsg('error', `❌ ${asin}：${err.message}`);
-            } finally {
-                try { if (!amazonWin.closed) amazonWin.close(); } catch (e) {}
-                renderTableData();
+                return;
             }
+
+            // 根据关键词筛选工具
+            toolLinks.forEach(link => {
+                const toolName = link.textContent.toLowerCase();
+                if (toolName.includes(keyword)) {
+                    link.parentElement.style.display = 'block';
+                } else {
+                    link.parentElement.style.display = 'none';
+                }
+            });
         }
 
-        showMsg('loading', '');
-        showMsg('progress', '');
-        showMsg('success', `✅ 抓取完成！成功：${successCount} | 失败：${failCount} | 总计：${total}`);
-        document.getElementById('copyBtn').disabled = false;
-        document.getElementById('downBtn').disabled = false;
-
-    } catch (err) {
-        showMsg('loading', '');
-        showMsg('error', `❌ 程序异常：${err.message}`);
-        document.getElementById('getBtn').disabled = false;
-    }
-}
-
-// 辅助函数不变
-function getMatchData(text, reg1, reg2, def = '暂无数据') {
-    if (!text) return def;
-    let res = reg1.exec(text);
-    if (res && res[0]) return res[0];
-    res = reg2.exec(text);
-    return res && res[0] ? res[0] : def;
-}
-function addFailData(asin, reason) {
-    let failData = { asin: asin };
-    const fields = ['bigCateRank','smallCateRank','price','monthSale','yearSale','onTime','reviewNum','rating','followNum','shipping','variantNum','newTag','newReview','goodRate','brand'];
-    fields.forEach(field => failData[field] = reason);
-    asinDataList.push(failData);
-}
-function showMsg(type, text) {
-    const el = document.getElementById(type + 'Text');
-    el.innerText = text;
-    el.style.display = text ? 'block' : 'none';
-}
-function renderTableData() {
-    const tbody = document.getElementById('tableBody');
-    if (asinDataList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16">暂无数据</td></tr>';
-        return;
-    }
-    let html = '';
-    asinDataList.forEach(item => {
-        html += `<tr>
-            <td>${item.asin}</td><td>${item.bigCateRank}</td><td>${item.smallCateRank}</td><td>${item.price}</td>
-            <td>${item.monthSale}</td><td>${item.yearSale}</td><td>${item.onTime}</td><td>${item.reviewNum}</td>
-            <td>${item.rating}</td><td>${item.followNum}</td><td>${item.shipping}</td><td>${item.variantNum}</td>
-            <td>${item.newTag}</td><td>${item.newReview}</td><td>${item.goodRate}</td><td>${item.brand}</td>
-        </tr>`;
-    });
-    tbody.innerHTML = html;
-}
-async function copyAllData() {
-    try {
-        let head = `ASIN\t大类名+排名\t小类目名+排名\t销售价\t月销量\t近1年销量\t上架时间\t评论数\t评分\t跟卖\t物流\t变体\t新品标\t30天评论\t好评率\t品牌\n`;
-        let content = asinDataList.map(item => `${item.asin}\t${item.bigCateRank}\t${item.smallCateRank}\t${item.price}\t${item.monthSale}\t${item.yearSale}\t${item.onTime}\t${item.reviewNum}\t${item.rating}\t${item.followNum}\t${item.shipping}\t${item.variantNum}\t${item.newTag}\t${item.newReview}\t${item.goodRate}\t${item.brand}`).join('\n');
-        await navigator.clipboard.writeText(head + content);
-        showMsg('success', '✅ 复制成功！打开Excel粘贴即可');
-    } catch (err) {
-        showMsg('error', `❌ 复制失败：${err.message}`);
-    }
-}
-function downloadExcel() {
-    try {
-        let excel = [['ASIN','大类名+排名','小类目名+排名','销售价(美金)','月销量','近1年销量','上架时间','累计评论数','Rating评分','跟卖数量','FBA/FBM','变体数量','新品标','30天新增评论','好评率(%)','品牌名称']];
-        asinDataList.forEach(item => excel.push([item.asin,item.bigCateRank,item.smallCateRank,item.price,item.monthSale,item.yearSale,item.onTime,item.reviewNum,item.rating,item.followNum,item.shipping,item.variantNum,item.newTag,item.newReview,item.goodRate,item.brand]));
-        let blob = new Blob([excel.map(row=>row.join(',')).join('\n')],{type:'application/vnd.ms-excel'});
-        let a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `亚马逊竞品数据_${new Date().toLocaleDateString().replace(/\//g,'-')}.xls`;
-        a.click();
-        showMsg('success', '✅ 下载成功！');
-    } catch (err) {
-        showMsg('error', `❌ 下载失败：${err.message}`);
-    }
-}
-function resetAllData() {
-    asinDataList = [];
-    renderTableData();
-    document.getElementById('copyBtn').disabled = true;
-    document.getElementById('downBtn').disabled = true;
-    showMsg('success', '✅ 已清空数据');
-}
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-</script>
+        // 绑定搜索事件
+        searchBtn.addEventListener('click', searchTools);
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                searchTools();
+            }
+        });
+    </script>
 </body>
 </html>
