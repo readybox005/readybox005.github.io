@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHL单号Waybill Number&JD Number查询和条形码生成</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: row; /* PC端左右布局 */
+            align-items: flex-start;
+            justify-content: center;
+            background-color: #f5f7fa;
+            padding: 20px;
+            gap: 20px; /* 左右模块间距 */
+            flex-wrap: wrap; /* 移动端自动换行 */
+        }
+        /* 通用模块样式 */
+        .module {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 480px; /* 单个模块最大宽度 */
+        }
+        h2 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 22px;
+        }
+        .input-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #2d3748;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        /* 快递单号按钮组 - 调整布局：DHL按钮独占一行，Waybill按钮并排 */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .dhl-query-btn {
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: white;
+            background-color: #e53e3e;
+            width: 100%;
+        }
+        .dhl-query-btn:hover {
+            background-color: #c53030;
+        }
+        .waybill-btn-wrap {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        .jump-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: white;
+        }
+        .btn1 {
+            background-color: #4299e1;
+        }
+        .btn1:hover {
+            background-color: #3182ce;
+        }
+        .btn2 {
+            background-color: #9f7aea;
+        }
+        .btn2:hover {
+            background-color: #805ad5;
+        }
+        /* JD Number按钮容器（移除日期栏后简化） */
+        .jd-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .jd-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #38b2ac;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .jd-btn:hover {
+            background-color: #319795;
+        }
+        /* 禁用状态通用样式 */
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .tip {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #718096;
+        }
+        /* 优化示例区域样式 */
+        .example {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+        .example ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        .example li {
+            margin-bottom: 8px;
+            word-break: break-all; /* 长链接自动换行 */
+        }
+        .example li:last-child {
+            margin-bottom: 0;
+        }
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .module {
+                max-width: 100%;
+                padding: 25px 20px; /* 移动端减少内边距 */
+            }
+            .example {
+                font-size: 11px; /* 移动端微调字体 */
+            }
+        }
+        /* 警示文字样式 */
+        .warning-dhl {
+            font-size: 24px; /* 大一号字体（比默认16px大） */
+            color: #ff0000; /* 鲜亮红色警示色 */
+            font-weight: bold; /* 加粗强化 */
+            /* 无限闪烁动画 */
+            animation: flash 1s infinite alternate;
+            -webkit-animation: flash 1s infinite alternate; /* 兼容webkit内核（Chrome/Safari） */
+            text-align: left; /* 与输入框对齐 */
+        }
+        /* 定义闪烁动画 */
+        @keyframes flash {
+            0% { opacity: 1; } /* 完全显示 */
+            100% { opacity: 0.3; } /* 半透明（闪烁效果） */
+        }
+        /* 兼容webkit内核浏览器 */
+        @-webkit-keyframes flash {
+            0% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧：快递单号模块 -->
+    <div class="module" id="express-module">
+        <h2>快递单号条形码</h2>
+        <div class="input-group">
+            <label for="express-code">请输入快递单号</label>
+            <input 
+                type="text" 
+                id="express-code" 
+                placeholder="例如：8702552633、8702552634"
+                autocomplete="off"
+            >
+        </div>
+        <!-- 调整按钮顺序：DHL按钮在最上方，Waybill按钮在下方并排 -->
+        <div class="btn-group">
+            <button class="dhl-query-btn" id="dhl-query-btn" disabled>DHL官网查询</button>
+            <div class="waybill-btn-wrap">
+                <button class="jump-btn btn1" id="jump-btn1" disabled>Waybill Number 1 条形码</button>
+                <button class="jump-btn btn2" id="jump-btn2" disabled>Waybill Number 2 条形码</button>
+            </div>
+        </div>
+        <p class="tip">输入单号后点击对应按钮，自动跳转到指定页面</p>
+        <!-- 优化示例排版：改用列表+背景框 -->
+        <div class="example">
+            <ul>
+                <li>示例1：输入8702552633 → 点击DHL官网查询跳转至 https://www.dhl.com/cn-zh/home/tracking.html?tracking-id=8702552633&submit=1&inputsource=marketingstage</li>
+                <li>示例2：输入8702552633 → 点击Btn1跳转至 https://t-x-m.com/indexbarcode.asp?bc1=8702552633&bc2=10&bc3=419&bc4=89&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15</li>
+                <li>示例3：输入8702552633 → 点击Btn2跳转至 https://t-x-m.com/indexbarcode.asp?bc1=8702552633&bc2=10&bc3=339&bc4=67&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 右侧：JD Number模块（替换为警示文字） -->
+    <div class="module" id="jd-module">
+        <h2>JD Number</h2>
+        <div class="input-group">
+            <label for="jd-code">请输入JD Number</label>
+            <input 
+                type="text" 
+                id="jd-code" 
+                placeholder="例如：JD014600012483124747"
+                autocomplete="off"
+            >
+        </div>
+        <div class="jd-container">
+            <!-- 替换为闪烁警示文字 -->
+            <div class="warning-dhl">注意！！！ DHL 的发件日期 ！！</div>
+            <button class="jd-btn" id="jd-jump-btn" disabled>JD Number条形码</button>
+        </div>
+        <p class="tip">输入JD单号后点击按钮，自动跳转到对应的条形码生成页</p>
+        <!-- 优化示例排版：改用列表+背景框 -->
+        <div class="example">
+            <ul>
+                <li>示例：输入JD014600012483124747 → 跳转至 https://t-x-m.com/indexbarcode.asp?bc1=JJD014600012483124747&bc2=10&bc3=691&bc4=211&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------- 核心DOM元素 ----------------------
+        const codeInput = document.getElementById('express-code');
+        const jumpBtn1 = document.getElementById('jump-btn1');
+        const jumpBtn2 = document.getElementById('jump-btn2');
+        const dhlQueryBtn = document.getElementById('dhl-query-btn');
+        const jdInput = document.getElementById('jd-code');
+        const jdJumpBtn = document.getElementById('jd-jump-btn');
+
+        // ---------------------- 固定参数配置 ----------------------
+        const FIXED_PARAMS1 = 'bc2=10&bc3=419&bc4=89&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15'; // Waybill1参数
+        const FIXED_PARAMS2 = 'bc2=10&bc3=339&bc4=67&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15';   // Waybill2参数
+        const JD_FIXED_PARAMS = 'bc2=10&bc3=691&bc4=211&bc9=3&bc5=22&bc6=11&bc7=Arial&bc8=15';
+        const BASE_URL = 'https://t-x-m.com/indexbarcode.asp?';
+        const DHL_TRACK_URL = 'https://www.dhl.com/cn-zh/home/tracking.html?tracking-id=';
+
+        // ---------------------- 输入监听逻辑 ----------------------
+        // 快递单号输入监听（同步启用/禁用所有相关按钮）
+        codeInput.addEventListener('input', function() {
+            const code = this.value.trim();
+            const isEnabled = code !== '';
+            jumpBtn1.disabled = !isEnabled;
+            jumpBtn2.disabled = !isEnabled;
+            dhlQueryBtn.disabled = !isEnabled;
+        });
+
+        // JD单号输入监听
+        jdInput.addEventListener('input', function() {
+            const code = this.value.trim();
+            jdJumpBtn.disabled = code === '';
+        });
+
+        // ---------------------- DHL官网查询（仅跳转，无填充） ----------------------
+        dhlQueryBtn.addEventListener('click', function() {
+            const expressCode = codeInput.value.trim();
+            if (!expressCode) {
+                alert('请输入有效的快递单号！');
+                return;
+            }
+            // 仅跳转DHL官网查询链接
+            const dhlFullUrl = `${DHL_TRACK_URL}${expressCode}&submit=1&inputsource=marketingstage`;
+            window.open(dhlFullUrl, '_blank');
+        });
+
+        // ---------------------- Waybill条形码跳转逻辑 ----------------------
+        function jumpToBarcode(params) {
+            const expressCode = codeInput.value.trim();
+            if (!expressCode) {
+                alert('请输入有效的快递单号！');
+                return;
+            }
+            const fullUrl = `${BASE_URL}bc1=${expressCode}&${params}`;
+            window.open(fullUrl, '_blank');
+        }
+        jumpBtn1.addEventListener('click', () => jumpToBarcode(FIXED_PARAMS1));
+        jumpBtn2.addEventListener('click', () => jumpToBarcode(FIXED_PARAMS2));
+
+        // ---------------------- JD单号跳转逻辑 ----------------------
+        jdJumpBtn.addEventListener('click', function() {
+            const jdCode = jdInput.value.trim();
+            if (!jdCode) {
+                alert('请输入有效的JD Number！');
+                return;
+            }
+            const bc1Value = `J${jdCode}`;
+            const fullUrl = `${BASE_URL}bc1=${bc1Value}&${JD_FIXED_PARAMS}`;
+            window.open(fullUrl, '_blank');
+        });
+
+        // ---------------------- 页面初始化 ----------------------
+        jumpBtn1.disabled = true;
+        jumpBtn2.disabled = true;
+        dhlQueryBtn.disabled = true;
+        jdJumpBtn.disabled = true;
+        codeInput.focus();
+    </script>
+</body>
+</html>
