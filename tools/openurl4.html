@@ -2,8 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>自动打开链接工具【v3.1·修复跨域滚动】</title>
-    
+    <title>自动打开链接工具【v3.2·多方案滚动】</title>
     <style>
         * {margin:0;padding:0;box-sizing:border-box;}
         body {padding:20px;font-family:微软雅黑, Arial;width:950px;margin:0 auto;line-height:1.8;}
@@ -39,7 +38,7 @@
     </style>
 </head>
 <body>
-    <h2>自动打开链接工具【v3.1·修复跨域滚动】</h2>
+    <h2>自动打开链接工具【v3.2·多方案滚动】</h2>
 
     <div class="safe-tip">
 💡 <strong>本次核心修复（彻底解决阿里重复登录 + 滚动时机问题）</strong>：<br>
@@ -107,7 +106,7 @@
         <button id="clearCompletedBtn">🗑️ 清空已完成</button>
     </div>
 
-    <div id="status">💡 就绪：v3.1 已修复登录态丢失 + 跨域滚动问题</div>
+    <div id="status">💡 就绪：v3.2 已修复登录态丢失 + 多方案自动滚动</div>
 
     <div class="tips">
 ⚠️ 首次使用允许浏览器弹窗；优先使用【普通档位】防风控最佳；完整保留买家登录Cookie，解决每次打开都要验证问题。<br>
@@ -290,12 +289,99 @@
         const scrollTasks = new Map(); // key: targetWin, value: { intervalId, startTime, duration }
 
         /**
-         * 核心滚动函数：在 opener 页面中通过闭包间接控制子窗口滚动
-         * 完全不触碰子窗口的 DOM 或自定义属性，彻底避免跨域错误
+         * 方案A：通过 scrollBy 直接滚动窗口
+         */
+        function scrollByWindow(targetWin, amount) {
+            try {
+                targetWin.scrollBy(0, amount);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * 方案B：通过模拟键盘 PageDown 事件触发页面滚动
+         * 适用于 SPA 或自定义滚动容器的页面
+         */
+        function scrollByKeyEvent(targetWin) {
+            try {
+                // 模拟 PageDown 键
+                const keyEvent = new KeyboardEvent('keydown', {
+                    key: 'PageDown',
+                    code: 'PageDown',
+                    keyCode: 34,
+                    which: 34,
+                    bubbles: true,
+                    cancelable: true
+                });
+                targetWin.document.dispatchEvent(keyEvent);
+
+                // 同时发送 keyup
+                const keyUpEvent = new KeyboardEvent('keyup', {
+                    key: 'PageDown',
+                    code: 'PageDown',
+                    keyCode: 34,
+                    which: 34,
+                    bubbles: true,
+                    cancelable: true
+                });
+                targetWin.document.dispatchEvent(keyUpEvent);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * 方案C：通过模拟鼠标滚轮事件触发页面滚动
+         * 这是最接近真人滚轮操作的方式
+         */
+        function scrollByWheelEvent(targetWin) {
+            try {
+                const wheelEvent = new WheelEvent('wheel', {
+                    deltaY: 80 + Math.random() * 40,
+                    deltaMode: 0, // 像素模式
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: 500 + Math.random() * 200,
+                    clientY: 300 + Math.random() * 200
+                });
+                targetWin.document.dispatchEvent(wheelEvent);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * 方案D：通过聚焦窗口后发送方向键事件
+         */
+        function scrollByArrowKey(targetWin) {
+            try {
+                targetWin.focus();
+                const downEvent = new KeyboardEvent('keydown', {
+                    key: 'ArrowDown',
+                    code: 'ArrowDown',
+                    keyCode: 40,
+                    which: 40,
+                    bubbles: true
+                });
+                targetWin.document.dispatchEvent(downEvent);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * 核心滚动函数：综合多种滚动方案，自动选择可用的方式
          */
         function injectScrollToChild(targetWin, scrollTime) {
             const startTime = Date.now();
             const taskKey = targetWin;
+            let scrollMethod = 'scrollBy'; // 默认方法
+            let failCount = 0;
 
             const doScroll = () => {
                 const elapsed = Date.now() - startTime;
@@ -304,26 +390,57 @@
                     return;
                 }
 
-                try {
-                    // 跨域安全的滚动：scrollBy 在跨域窗口上通常可用
-                    const scrollAmount = 3 + Math.random() * 5; // 每次滚动 3-8 像素
-                    targetWin.scrollBy(0, scrollAmount);
-                } catch (e) {
-                    // scrollBy 失败时静默处理，不报错
+                let success = false;
+
+                // 根据当前使用的方法尝试滚动
+                if (scrollMethod === 'scrollBy') {
+                    success = scrollByWindow(targetWin, 5 + Math.random() * 5);
+                    if (!success) {
+                        scrollMethod = 'wheel';
+                        addLog('scrollBy 无效，切换到滚轮事件');
+                    }
+                }
+
+                if (scrollMethod === 'wheel') {
+                    success = scrollByWheelEvent(targetWin);
+                    if (!success) {
+                        scrollMethod = 'pageDown';
+                        addLog('滚轮事件无效，切换到 PageDown');
+                    }
+                }
+
+                if (scrollMethod === 'pageDown') {
+                    success = scrollByKeyEvent(targetWin);
+                    if (!success) {
+                        scrollMethod = 'arrow';
+                        addLog('PageDown 无效，切换到方向键');
+                    }
+                }
+
+                if (scrollMethod === 'arrow') {
+                    success = scrollByArrowKey(targetWin);
+                }
+
+                if (!success) {
+                    failCount++;
+                    if (failCount === 1) {
+                        addLog('所有滚动方案均失败，可能页面无滚动内容', 'error');
+                    }
                 }
             };
 
-            // 立即执行一次
+            // 立即执行一次测试
             doScroll();
 
-            // 使用随机间隔启动滚动，模拟真人不规则节奏
-            const intervalId = setInterval(doScroll, 80 + Math.random() * 120);
+            // 使用随机间隔启动滚动
+            const intervalId = setInterval(doScroll, 200 + Math.random() * 200);
 
-            // 将任务信息保存在 opener 的 Map 中，绝不触碰子窗口
+            // 将任务信息保存在 opener 的 Map 中
             scrollTasks.set(taskKey, {
                 intervalId: intervalId,
                 startTime: startTime,
-                duration: scrollTime
+                duration: scrollTime,
+                method: scrollMethod
             });
         }
 
@@ -333,7 +450,7 @@
         function startAutoScroll(targetWin, scrollTime) {
             if (!enableScroll.checked) return;
 
-            addLog(`[v3.1] 启动自动滚动，持续 ${scrollTime.toFixed(1)} 秒`);
+            addLog(`[v3.2] 启动自动滚动，持续 ${scrollTime.toFixed(1)} 秒`);
 
             // 先清理该窗口可能存在的旧任务
             stopAutoScroll(targetWin);
