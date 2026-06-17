@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>自动打开链接【同源Blob中转·完整保留登录】</title>
+    <title>自动打开链接工具</title>
     <style>
         * {margin:0;padding:0;box-sizing:border-box;}
         body {padding:20px;font-family:微软雅黑, Arial;width:950px;margin:0 auto;line-height:1.8;}
@@ -37,21 +37,21 @@
     </style>
 </head>
 <body>
-    <h2>自动打开链接【同源Blob中转·完整保留登录】</h2>
+    <h2>自动打开链接【保留登录+页面滚动模拟】</h2>
 
     <div class="safe-tip">
-💡 核心优化：同源中转页实现自动上下滚动，不切断登录Cookie，减少阿里重复验证
+💡 优化说明：不使用Blob中转，彻底解决源码打印；新开空白页模拟滚动，保留浏览器登录Cookie，减少阿里重复验证
     </div>
 
     <div class="speed-btns">
-        <button id="fastSpeed">快速（间隔5-10s/观看3-5s）</button>
-        <button id="normalSpeed" style="background:#3498db;color:#fff;">普通（间隔20-60s/观看8-15s）</button>
-        <button id="slowSpeed">慢速（间隔60-120s/观看15-30s）</button>
+        <button id="fastSpeed">快速（间隔5-10s/停留3-5s）</button>
+        <button id="normalSpeed" style="background:#3498db;color:#fff;">普通（间隔20-60s/停留8-15s）</button>
+        <button id="slowSpeed">慢速（间隔60-120s/停留15-30s）</button>
     </div>
 
     <div class="config">
         ✅ 间隔时间：<input type="number" id="intervalMinSec" value="20" min="1" step="1"> 秒 ~ <input type="number" id="intervalMaxSec" value="60" min="1" step="1"> 秒
-        ✅ 浏览停留：<input type="number" id="watchMinSec" value="8" min="1" step="1"> 秒 ~ <input type="number" id="watchMaxSec" value="15" min="1" step="1">
+        ✅ 页面停留：<input type="number" id="watchMinSec" value="8" min="1" step="1"> 秒 ~ <input type="number" id="watchMaxSec" value="15" min="1" step="1">
     </div>
 
     <div class="progress-container">
@@ -96,15 +96,15 @@
         <button id="clearCompletedBtn">🗑️ 清空已完成</button>
     </div>
 
-    <div id="status">💡 就绪：同源中转模拟滚动，登录态不丢失</div>
+    <div id="status">💡 就绪：空白页模拟滚动，完整保留登录Cookie</div>
 
     <div class="tips">
-⚠️ 1. 浏览器弹窗请允许；2. 优先普通档位；3. HTTPS域名登录更稳定
+⚠️ 1. 浏览器弹窗权限选择允许；2. 普通档位风控最低；3. HTTPS域名登录状态更稳定
     </div>
 
 <script>
 const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
+const stopBtn = document.getElementById('clearPendingBtn');
 const clearPendingBtn = document.getElementById('clearPendingBtn');
 const clearCompletedBtn = document.getElementById('clearCompletedBtn');
 const intervalMinSec = document.getElementById('intervalMinSec');
@@ -133,6 +133,7 @@ let watchProgressTimer = null;
 let intervalProgressTimer = null;
 const STORAGE_KEY = 'autoUrlOpenerData';
 
+// 更新链接计数
 function refreshCount() {
     const pendingArr = pendingUrlList.value.split('\n').filter(s => s.trim());
     pendingCount.innerText = '共' + pendingArr.length + '条';
@@ -140,6 +141,7 @@ function refreshCount() {
     completedCount.innerText = '共' + compArr.length + '条';
 }
 
+// 随机时间生成
 function getRandomNumber(min, max) {
     const minNum = Number(min) || 1;
     const maxNum = Number(max) || 1;
@@ -147,75 +149,51 @@ function getRandomNumber(min, max) {
     const finalMax = Math.max(minNum, maxNum);
     const base = Math.random() * (finalMax - finalMin) + finalMin;
     const drift = (Math.random() - 0.5) * 2;
-    return Math.round((base + drift) * 10) / 10;
+    return Math.round((base + drift) / 10) * 10;
 }
 
 function fakeHumanFocus() {
     window.focus();
 }
 
-// 修复核心：不用转义，拆分script闭合标签，纯字符串拼接，Blob内正常执行JS滚动
-function getProxyPageHtml(targetUrl, watchTime) {
-    // 拆分script标签，防止外层JS提前截断
-    const openScript = '<scr' + 'ipt>';
-    const closeScript = '</scr' + 'ipt>';
-    // 中转完整页面代码
-    const pageBody = openScript + `
-const targetLink = "${targetUrl}";
-const totalViewMs = ${watchTime * 1000};
-const scrollStepCount = 6;
-const stepGap = totalViewMs / scrollStepCount;
-let scrollStep = 0;
-const scrollTimer = setInterval(()=>{
-    scrollStep++;
-    const scrollPercent = scrollStep / scrollStepCount;
-    const maxScroll = document.body.scrollHeight - window.innerHeight;
-    window.scrollTo({top: maxScroll * scrollPercent, behavior:"smooth"});
-    if(scrollStep >= scrollStepCount) clearInterval(scrollTimer);
-}, stepGap);
-setInterval(()=>{
-    const x = Math.random() * window.innerWidth;
-    const y = Math.random() * window.innerHeight;
-    document.dispatchEvent(new MouseEvent("mousemove",{clientX:x,clientY:y,bubbles:true}));
-}, 350);
-setInterval(()=>{
-    const x = Math.random() * window.innerWidth;
-    const y = Math.random() * window.innerHeight;
-    document.dispatchEvent(new MouseEvent("click",{clientX:x,clientY:y,bubbles:true}));
-}, 1300);
-setTimeout(()=>{
-    window.scrollTo({top:0,behavior:"smooth"});
-}, totalViewMs * 0.7);
-setTimeout(()=>{
-    window.location.href = targetLink;
-}, totalViewMs * 0.85);
-` + closeScript;
-
-    const fullHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>浏览中转</title>
-<style>body{margin:0;height:3200px;background:#ffffff;}</style>
-</head>
-<body>
-${pageBody}
-</body>
-</html>
-`;
-    return fullHtml;
-}
-
-function safeOpenProxy(targetUrl, watchTime) {
-    const proxyHtml = getProxyPageHtml(targetUrl, watchTime);
-    const blob = new Blob([proxyHtml], {type: "text/html"});
-    const blobUrl = URL.createObjectURL(blob);
-    const win = window.open(blobUrl, '_blank', 'noopener=no,noreferrer=no');
-    setTimeout(function(){URL.revokeObjectURL(blobUrl);}, 3000);
+// 打开空白中转页，用postMessage通信滚动逻辑，无Blob文本渲染问题
+function openBlankProxy(watchTime, targetUrl) {
+    const win = window.open('about:blank', '_blank', 'noopener=no,noreferrer=no');
+    if (!win) return null;
+    win.document.body.style.height = '3200px';
+    // 页面内滚动模拟脚本，直接注入空白页，无字符串转义BUG
+    const script = win.document.createElement('script');
+    script.textContent = `
+        let target = "${targetUrl}";
+        let ms = ${watchTime * 1000};
+        let step = 0;
+        const stepNum = 6;
+        const gap = ms / stepNum;
+        const timer = setInterval(()=>{
+            step++;
+            const rate = step / stepNum;
+            const maxH = document.body.scrollHeight - window.innerHeight;
+            window.scrollTo({top: maxH * rate, behavior:"smooth"});
+            if(step >= stepNum) clearInterval(timer);
+        }, gap);
+        setInterval(()=>{
+            const x = Math.random() * innerWidth;
+            const y = Math.random() * innerHeight;
+            document.dispatchEvent(new MouseEvent("mousemove",{clientX:x,clientY:y,bubbles:true}));
+        }, 350);
+        setInterval(()=>{
+            const x = Math.random() * innerWidth;
+            const y = Math.random() * innerHeight;
+            document.dispatchEvent(new MouseEvent("click",{clientX:x,clientY:y,bubbles:true}));
+        }, 1300);
+        setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}), ms * 0.7);
+        setTimeout(()=>window.location.href = target, ms * 0.85);
+    `;
+    win.document.head.appendChild(script);
     return win;
 }
 
+// 更新进度条
 function updateProgressBar(textEl, bar, current, total) {
     const percent = Math.min(Math.round((current / total) * 100), 100);
     bar.style.width = percent + '%';
@@ -231,26 +209,11 @@ function clearProgressBars() {
     intervalProgressText.textContent = '0% (0/0秒)';
 }
 
-function waitForPageLoad(targetWin) {
-    return new Promise(function(resolve) {
-        let waitTime = 0;
-        const maxWaitTime = 10000;
-        function checkLoad() {
-            waitTime += 300;
-            try {
-                if (targetWin.document?.readyState === 'complete' || waitTime >= maxWaitTime) resolve();
-                else setTimeout(checkLoad, 300);
-            } catch (e) { setTimeout(resolve, 2000); }
-        }
-        checkLoad();
-    });
-}
-
 function updateUrlLists(executedUrl) {
-    const pendingUrls = pendingUrlList.value.split('\n').filter(function(item){return item.trim();});
-    const remainingPending = pendingUrls.filter(function(url){return url.trim() !== executedUrl.trim();});
+    const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
+    const remainingPending = pendingUrls.filter(url => url.trim() !== executedUrl.trim());
     pendingUrlList.value = remainingPending.join('\n');
-    const completedUrls = completedUrlList.value.split('\n').filter(function(item){return item.trim();});
+    const completedUrls = completedUrlList.value.split('\n').filter(item => item.trim());
     completedUrls.push(executedUrl.trim());
     completedUrlList.value = completedUrls.join('\n');
     saveToLocalStorage();
@@ -258,7 +221,7 @@ function updateUrlLists(executedUrl) {
 }
 
 function addLog(message, type) {
-    if(!type) type = 'info';
+    if (!type) type = 'info';
     const time = new Date().toLocaleTimeString();
     const logItem = document.createElement('div');
     logItem.className = 'log-' + type;
@@ -271,7 +234,7 @@ function loadFromLocalStorage() {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
         const parsed = JSON.parse(data);
-        pendingUrlList.value = parsed.pending || '';
+        pendingUrl.value = parsed.pending || '';
         completedUrlList.value = parsed.completed || '';
         logList.innerHTML = parsed.logs || '';
     }
@@ -292,68 +255,60 @@ function exportLog() {
     const blob = new Blob([logText], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = '打开链接日志_' + new Date().toLocaleDateString().replace(/\//g, '-') + '.txt';
+    a.download = '打开日志_' + new Date().toLocaleDateString().replace(/\//g, '-') + '.txt';
     a.click();
     URL.revokeObjectURL(a.href);
 }
 
 async function runTask() {
     if (!isRunning) return;
-    const pendingUrls = pendingUrlList.value.split('\n').filter(function(item){return item.trim();});
+    const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
     if (pendingUrls.length === 0) {
         isRunning = false;
         clearProgressBars();
-        const cnt = completedUrlList.value.split('\n').filter(function(item){return item.trim();}).length;
-        status.innerHTML = '✅ 执行完成，累计完成 ' + cnt + ' 个链接';
+        const cnt = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+        status.innerHTML = '✅ 执行完成，共' + cnt + '个链接';
         status.style.color = '#27ae60';
-        addLog('✅ 全部任务执行完毕', 'success');
+        addLog('全部任务执行完毕', 'success');
         return;
     }
-
     const currentUrl = pendingUrls[0].trim();
-    const countArr = completedUrlList.value.split('\n').filter(function(item){return item.trim();});
-    status.innerHTML = '🔄 正在执行第 ' + (countArr.length + 1) + ' 个链接';
+    const count = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+    status.innerHTML = '正在执行第' + (count + 1) + '个链接';
     status.style.color = '#2980b9';
-    addLog('开始执行：' + currentUrl);
-
+    addLog('开始：' + currentUrl);
     fakeHumanFocus();
     const watchTime = getRandomNumber(watchMinSec.value, watchMaxSec.value);
-    const newWin = safeOpenProxy(currentUrl, watchTime);
+    const newWin = openBlankProxy(watchTime, currentUrl);
     if (!newWin) {
-        status.innerHTML = '❌ 请允许浏览器弹窗！';
+        status.innerHTML = '❌ 允许弹窗权限';
         status.style.color = '#e74c3c';
-        addLog('弹窗被浏览器拦截', 'error');
+        addLog('弹窗被拦截', 'error');
         isRunning = false;
         return;
     }
     childWindows.push(newWin);
-    await waitForPageLoad(newWin);
-
-    addLog('同源中转页模拟真人滚动浏览 ' + watchTime + ' 秒');
+    addLog('空白中转页模拟滚动' + watchTime + '秒');
     let cur = 0;
     clearInterval(watchProgressTimer);
-    watchProgressTimer = setInterval(function() {
+    watchProgressTimer = setInterval(() => {
         cur += 0.1;
         updateProgressBar(watchProgressText, watchProgressBar, cur, watchTime);
         if (cur >= watchTime) clearInterval(watchProgressTimer);
     }, 100);
-
-    setTimeout(function() {
-        try { newWin.close(); childWindows = childWindows.filter(function(w){return w !== newWin;}); } catch (e) {}
+    setTimeout(() => {
+        try { newWin.close(); childWindows = childWindows.filter(w => w !== newWin); } catch (e) {}
         updateUrlLists(currentUrl);
-        addLog('✅ 浏览完成，登录会话完整保留', 'success');
-
+        addLog('浏览完成，登录Cookie保留', 'success');
         const intervalTime = getRandomNumber(intervalMinSec.value, intervalMaxSec.value);
-        addLog('等待 ' + intervalTime + ' 秒后继续下一个');
-
+        addLog('等待' + intervalTime + '秒下一条');
         let curInt = 0;
         clearInterval(intervalProgressTimer);
-        intervalProgressTimer = setInterval(function() {
+        intervalProgressTimer = setInterval(() => {
             curInt += 0.1;
             updateProgressBar(intervalProgressText, intervalProgressBar, curInt, intervalTime);
             if (curInt >= intervalTime) clearInterval(intervalProgressTimer);
         }, 100);
-
         timeout = setTimeout(runTask, intervalTime * 1000);
     }, watchTime * 1000);
 }
@@ -364,69 +319,69 @@ function validateInputs() {
     const wmin = Number(watchMinSec.value);
     const wmax = Number(watchMaxSec.value);
     if (imin > imax || wmin > wmax || imin < 1 || wmin < 1) {
-        status.innerText = '❌ 时间区间设置错误';
+        status.innerText = '时间区间设置错误';
         status.style.color = '#e74c3c';
         return false;
     }
     return true;
 }
 
-startBtn.onclick = function() {
+startBtn.onclick = () => {
     if (isRunning) return;
     if (!pendingUrlList.value.trim()) {
-        status.innerText = '❌ 请先粘贴链接';
+        status.innerText = '请粘贴链接';
         status.style.color = '#e74c3c';
         return;
     }
     if (!validateInputs()) return;
     isRunning = true;
-    status.innerText = '✅ 任务启动，同源中转防风模式';
+    status.innerText = '任务启动，空白中转模拟滚动';
     status.style.color = '#27ae60';
-    addLog('任务启动，同源中转模拟完整真人滑动', 'success');
+    addLog('任务开始', 'success');
     runTask();
 };
 
-stopBtn.onclick = function() {
+stopBtn.onclick = () => {
     clearTimeout(timeout);
     clearProgressBars();
-    childWindows.forEach(function(w) { try { w.close(); } catch (e) {} });
+    childWindows.forEach(w => { try { w.close(); } catch (e) {} });
     childWindows = [];
     isRunning = false;
-    status.innerText = '⏹️ 任务已停止';
+    status.innerText = '任务已停止';
     status.style.color = '#e74c3c';
-    addLog('手动停止任务');
+    addLog('手动停止');
 };
 
-clearPendingBtn.onclick = function() {
+clearPendingBtn.onclick = () => {
     pendingUrlList.value = '';
     saveToLocalStorage();
     refreshCount();
-    status.innerText = '🗑️ 已清空待执行';
+    status.innerText = '已清空待执行';
     status.style.color = '#3498db';
 };
 
-clearCompletedBtn.onclick = function() {
+clearCompletedBtn.onclick = () => {
     completedUrlList.value = '';
     saveToLocalStorage();
     refreshCount();
-    status.innerText = '🗑️ 已清空已完成';
+    status.innerText = '已清空已完成';
     status.style.color = '#3498db';
 };
 
-fastSpeed.onclick = function() {
+fastSpeed.onclick = () => {
     intervalMinSec.value = 5; intervalMaxSec.value = 10;
     watchMinSec.value = 3; watchMaxSec.value = 5;
     addLog('切换快速档位');
 };
-normalSpeed.onclick = function() {
+normalSpeed.onclick = () => {
     intervalMinSec.value = 20; intervalMaxSec.value = 60;
     watchMinSec.value = 8; watchMaxSec.value = 15;
-    addLog('切换普通档位（推荐）');
+    addLog('切换普通档位');
 };
-slowSpeed.onclick = function() {
+slowSpeed.onclick = () => {
     intervalMinSec.value = 60; intervalMaxSec.value = 120;
     watchMinSec.value = 15; watchMaxSec.value = 30;
-    addLog('切换慢速档位（最低风控）');
+    addLog('切换慢速档位');
 };
 
 exportLogBtn.onclick = exportLog;
