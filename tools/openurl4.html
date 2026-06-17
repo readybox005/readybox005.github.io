@@ -283,98 +283,74 @@
         }
 
         /**
-         * 核心滚动函数：通过 opener 向子窗口注入滚动脚本
-         * 不依赖 Blob URL，不创建新文档，直接操作子窗口的 DOM/scroll
-         * 避免跨域问题，不触发阿里登录验证
+         * 全局滚动任务管理器
+         * 所有滚动 interval 都保存在 opener 页面，避免跨域设置子窗口属性
+         */
+        const scrollTasks = new Map(); // key: targetWin, value: { intervalId, startTime, duration }
+
+        /**
+         * 核心滚动函数：在 opener 页面中通过闭包间接控制子窗口滚动
+         * 完全不触碰子窗口的 DOM 或自定义属性，彻底避免跨域错误
          */
         function injectScrollToChild(targetWin, scrollTime) {
-            try {
-                // 方案1：直接通过 opener 注入脚本到子窗口
-                // 由于同源策略，如果阿里页面与当前页面不同源，直接访问 targetWin.document 会报错
-                // 所以我们使用 postMessage 或 opener 引用方式
-                // 但最安全的方式是通过 targetWin.scrollTo() 和 targetWin.scrollBy()
-                // 这些方法在跨域时仍然可用！
+            const startTime = Date.now();
+            const taskKey = targetWin;
 
-                const startTime = Date.now();
-                const scrollInterval = setInterval(() => {
-                    const elapsed = Date.now() - startTime;
-                    if (elapsed >= scrollTime * 1000) {
-                        clearInterval(scrollInterval);
-                        return;
-                    }
+            const doScroll = () => {
+                const elapsed = Date.now() - startTime;
+                if (elapsed >= scrollTime * 1000) {
+                    stopAutoScroll(targetWin);
+                    return;
+                }
 
-                    try {
-                        // 跨域安全的滚动方式：使用 scrollBy
-                        // scrollBy 在跨域窗口上仍然可用
-                        const scrollAmount = 3 + Math.random() * 5; // 每次滚动 3-8 像素
-                        targetWin.scrollBy({ top: scrollAmount, left: 0, behavior: 'auto' });
-                    } catch (e) {
-                        // 如果 scrollBy 失败，尝试直接设置 scrollY
-                        try {
-                            targetWin.scrollTo(targetWin.scrollX || 0, (targetWin.scrollY || 0) + 5);
-                        } catch (err) {}
-                    }
-                }, 50 + Math.random() * 100); // 50-150ms 随机间隔，模拟真人
+                try {
+                    // 跨域安全的滚动：scrollBy 在跨域窗口上通常可用
+                    const scrollAmount = 3 + Math.random() * 5; // 每次滚动 3-8 像素
+                    targetWin.scrollBy(0, scrollAmount);
+                } catch (e) {
+                    // scrollBy 失败时静默处理，不报错
+                }
+            };
 
-                // 保存 interval ID 以便清理
-                targetWin.__scrollIntervalId = scrollInterval;
+            // 立即执行一次
+            doScroll();
 
-            } catch (e) {
-                addLog(`滚动注入失败: ${e.message}`, 'error');
-            }
+            // 使用随机间隔启动滚动，模拟真人不规则节奏
+            const intervalId = setInterval(doScroll, 80 + Math.random() * 120);
+
+            // 将任务信息保存在 opener 的 Map 中，绝不触碰子窗口
+            scrollTasks.set(taskKey, {
+                intervalId: intervalId,
+                startTime: startTime,
+                duration: scrollTime
+            });
         }
 
         /**
-         * 备用滚动方案：使用 postMessage 通信（如果上述方案在某些浏览器受限）
-         * 在子窗口加载完成后，通过 postMessage 发送滚动指令
-         */
-        function postMessageScroll(targetWin, scrollTime) {
-            try {
-                // 向子窗口发送滚动指令
-                // 子窗口需要监听 message 事件，但阿里页面不会监听我们的消息
-                // 所以这个方案只适用于我们能控制内容的页面
-                // 对于阿里国际站，此方案无效，仅作为备用记录
-                targetWin.postMessage({
-                    type: 'AUTO_SCROLL',
-                    duration: scrollTime,
-                    speed: 5
-                }, '*');
-            } catch (e) {}
-        }
-
-        /**
-         * 综合滚动方案：优先使用跨域安全的 scrollBy
+         * 启动自动滚动
          */
         function startAutoScroll(targetWin, scrollTime) {
             if (!enableScroll.checked) return;
 
             addLog(`启动自动滚动，持续 ${scrollTime.toFixed(1)} 秒`);
 
-            // 主方案：跨域安全的 scrollBy 滚动
-            injectScrollToChild(targetWin, scrollTime);
+            // 先清理该窗口可能存在的旧任务
+            stopAutoScroll(targetWin);
 
-            // 额外：偶尔停顿，模拟真人阅读
-            try {
-                const pauseInterval = setInterval(() => {
-                    if (!targetWin || targetWin.closed) {
-                        clearInterval(pauseInterval);
-                        return;
-                    }
-                    // 随机停顿 0.5-2 秒
-                    const pauseTime = 500 + Math.random() * 1500;
-                    // 暂停滚动（通过清除并重新设置 interval 实现）
-                    // 简化处理：在 injectScrollToChild 中已通过随机间隔实现
-                }, 3000);
-            } catch (e) {}
+            // 启动新滚动任务
+            injectScrollToChild(targetWin, scrollTime);
         }
 
+        /**
+         * 停止自动滚动
+         * 从 opener 的 Map 中查找并清理 interval
+         */
         function stopAutoScroll(targetWin) {
-            try {
-                if (targetWin && targetWin.__scrollIntervalId) {
-                    clearInterval(targetWin.__scrollIntervalId);
-                    targetWin.__scrollIntervalId = null;
-                }
-            } catch (e) {}
+            const task = scrollTasks.get(targetWin);
+            if (task) {
+                clearInterval(task.intervalId);
+                scrollTasks.delete(targetWin);
+            }
         }
 
         function waitForPageLoad(targetWin) {
@@ -569,8 +545,12 @@
         stopBtn.onclick = () => {
             clearTimeout(timeout);
             clearProgressBars();
-            // 停止所有子窗口的滚动
-            childWindows.forEach(w => { try { stopAutoScroll(w); w.close(); } catch (e) {} });
+            // 停止所有滚动任务（通过遍历 Map 清理所有 interval）
+            scrollTasks.forEach((task, win) => {
+                clearInterval(task.intervalId);
+                try { win.close(); } catch (e) {}
+            });
+            scrollTasks.clear();
             childWindows = [];
             isRunning = false;
             status.innerText = "⏹️ 任务已停止";
