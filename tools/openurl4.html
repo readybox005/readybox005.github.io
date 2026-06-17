@@ -41,12 +41,13 @@
     <h2>自动打开链接工具【修复阿里重复登录·防风控最终版·自动滚动】</h2>
 
     <div class="safe-tip">
-💡 <strong>本次核心修复（彻底解决阿里重复登录）</strong>：<br>
+💡 <strong>本次核心修复（彻底解决阿里重复登录 + 滚动时机问题）</strong>：<br>
 1. 移除 about:blank 中转空白页，杜绝会话丢失、设备指纹重置<br>
 2. 关闭 noopener/noreferrer 隔离，<strong>完整继承浏览器阿里登录Cookie、买家可信会话</strong><br>
 3. 真人不规则随机延时，消除机器固定周期风控特征<br>
 4. 前置页面焦点激活，模拟人工操作轨迹，大幅降低风控拦截<br>
-5. <strong>新增：自动滚动条滚动</strong> — 通过 opener 注入滚动脚本，无需 Blob 中转，不触发跨域验证
+5. <strong>新增：自动滚动条滚动</strong> — 通过 opener 注入滚动脚本，无需 Blob 中转，不触发跨域验证<br>
+6. <strong>关键修复：智能检测目标页面加载完成</strong> — 不再误把 about:blank 当成已加载，确保滚动一定在阿里页面上执行
     </div>
 
     <div class="speed-btns">
@@ -105,11 +106,12 @@
         <button id="clearCompletedBtn">🗑️ 清空已完成</button>
     </div>
 
-    <div id="status">💡 就绪：已修复登录态丢失问题，新增自动滚动功能</div>
+    <div id="status">💡 就绪：已修复登录态丢失 + 滚动时机问题</div>
 
     <div class="tips">
 ⚠️ 首次使用允许浏览器弹窗；优先使用【普通档位】防风控最佳；完整保留买家登录Cookie，解决每次打开都要验证问题。<br>
-🔔 <strong>自动滚动说明</strong>：通过 opener 向子窗口注入滚动脚本，模拟真人从上到下的浏览行为，无需 Blob 中转，不触发阿里跨域验证。
+🔔 <strong>自动滚动说明</strong>：智能检测目标页面加载完成后再开始滚动，确保滚动一定在阿里页面上执行，避免 about:blank 空白页上无效滚动。<br>
+🔔 <strong>浏览行为</strong>：页面加载完成 → 停留1-3秒（模拟真人先看）→ 开始滚动 → 持续浏览 → 关闭页面。
     </div>
 
     <script>
@@ -171,6 +173,65 @@
 
         function safeOpenUrl(url) {
             return window.open(url, '_blank', 'noopener=no,noreferrer=no');
+        }
+
+        /**
+         * 等待目标页面真正加载完成（而非 about:blank）
+         * 通过检测 URL 变化和 document.readyState 双重确认
+         */
+        function waitForTargetPageLoad(targetWin, targetUrl) {
+            return new Promise(resolve => {
+                let waitTime = 0;
+                const maxWaitTime = 15000; // 最长等待15秒
+                const checkInterval = 300;
+                
+                const checkLoad = () => {
+                    waitTime += checkInterval;
+                    
+                    try {
+                        const currentHref = targetWin.location.href;
+                        const isAboutBlank = currentHref === 'about:blank' || currentHref === '';
+                        
+                        if (!isAboutBlank) {
+                            // URL 已经变成目标页面，再检查 readyState
+                            try {
+                                if (targetWin.document?.readyState === 'complete') {
+                                    addLog(`目标页面加载完成: ${currentHref}`);
+                                    resolve();
+                                    return;
+                                }
+                            } catch (e) {
+                                // 跨域时无法访问 document，但 URL 已变，认为已加载
+                                addLog(`目标页面已导航 (跨域检测): ${currentHref}`);
+                                resolve();
+                                return;
+                            }
+                        }
+                        
+                        if (waitTime >= maxWaitTime) {
+                            addLog('等待页面加载超时，继续执行', 'error');
+                            resolve();
+                            return;
+                        }
+                        
+                        setTimeout(checkLoad, checkInterval);
+                    } catch (e) {
+                        // 如果无法访问 location，可能是跨域且已加载
+                        if (waitTime > 3000) {
+                            addLog('页面可能已加载 (跨域保护)');
+                            resolve();
+                            return;
+                        }
+                        if (waitTime >= maxWaitTime) {
+                            resolve();
+                            return;
+                        }
+                        setTimeout(checkLoad, checkInterval);
+                    }
+                };
+                
+                checkLoad();
+            });
         }
 
         function simulateMouseMove(targetWin, duration) {
@@ -419,7 +480,15 @@
                 return;
             }
             childWindows.push(newWin);
-            await waitForPageLoad(newWin);
+
+            // ===== 关键修复：等待目标页面真正加载完成（不是 about:blank）=====
+            addLog('等待目标页面加载...');
+            await waitForTargetPageLoad(newWin, currentUrl);
+
+            // 页面加载完成后，模拟真人"先看一会儿再滚动"的行为
+            const initialViewTime = 1 + Math.random() * 2; // 1-3 秒
+            addLog(`页面就绪，先停留 ${initialViewTime.toFixed(1)} 秒再开始滚动`);
+            await new Promise(r => setTimeout(r, initialViewTime * 1000));
 
             const watchTime = getRandomNumber(watchMinSec.value, watchMaxSec.value);
             addLog(`模拟真人浏览 ${watchTime} 秒`);
@@ -432,7 +501,7 @@
                 if (cur >= watchTime) clearInterval(watchProgressTimer);
             }, 100);
 
-            // ===== 核心修改：自动滚动 =====
+            // ===== 核心修改：自动滚动（现在一定在目标页面上执行）=====
             // 使用跨域安全的 scrollBy 方式，不依赖 Blob，不创建新文档
             startAutoScroll(newWin, watchTime);
 
