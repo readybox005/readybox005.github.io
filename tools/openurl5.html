@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>自动打开链接工具【v5.0·扩展滚动方案】</title>
+    <style>
+        * {margin:0;padding:0;box-sizing:border-box;}
+        body {padding:20px;font-family:微软雅黑, Arial;width:950px;margin:0 auto;line-height:1.8;}
+        h2 {color:#2c3e50;text-align:center;margin-bottom:20px;}
+        .safe-tip{background:#e8f5e9;border:1px solid #c8e6c9;padding:10px;border-radius:6px;color:#2e7d32;margin:10px 0;font-size:13px;}
+        .warn-tip{background:#fff3e0;border:1px solid #ffe0b2;padding:10px;border-radius:6px;color:#e65100;margin:10px 0;font-size:13px;}
+        .config {margin:15px 0;padding:10px;background:#f5f7fa;border-radius:6px;}
+        .config input {width:80px;padding:6px;margin:0 5px;border:1px solid #ddd;border-radius:4px;text-align:center;}
+        .config input[type="checkbox"] {width:auto;vertical-align:middle;margin:0 4px 0 12px;}
+        .speed-btns {margin:10px 0;padding:8px;background:#e8f4f8;border-radius:6px;text-align:center;}
+        .speed-btns button {padding:6px 12px;margin:0 5px;font-size:14px;}
+        .url-section {margin:15px 0;}
+        .url-section span {color:#3498db;font-weight:bold;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+        .count-tag {color:#666;font-size:13px;font-weight:normal;}
+        textarea {width:100%;height:180px;padding:10px;border:1px solid #ddd;border-radius:6px;margin:5px 0;resize:none;font-size:14px;}
+        button {padding:10px 20px;margin:0 8px;border:none;border-radius:6px;font-size:16px;cursor:pointer;transition:all 0.2s;}
+        button:hover {opacity:0.9;transform:scale(1.02);}
+        #startBtn {background:#27ae60;color:#fff;}
+        #stopBtn {background:#e74c3c;color:#fff;}
+        #clearPendingBtn {background:#95a5a6;color:#fff;}
+        #clearCompletedBtn {background:#6c757d;color:#fff;}
+        #status {margin-top:20px;font-size:16px;color:#e74c3c;font-weight:bold;text-align:center;}
+        .tips {margin-top:15px;padding:10px;background:#fff8e1;border:1px solid #ffeaa7;border-radius:6px;color:#6d4c41;font-size:13px;}
+        .section-divider {height:1px;background:#eee;margin:20px 0;}
+        .progress-container {margin:15px 0;padding:10px;background:#f8f9fa;border-radius:6px;}
+        .progress-bar {height:10px;background:#e9ecef;border-radius:5px;overflow:hidden;margin:8px 0;}
+        .progress-fill {height:100%;background:#27ae60;border-radius:5px;width:0%;transition:width 0.1s linear;}
+        .progress-label {font-size:14px;color:#495057;display:flex;justify-content:space-between;}
+        .log-section {margin:15px 0;}
+        #logList {height:120px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:13px;line-height:1.6;color:#333;}
+        .log-success {color:#27ae60;}
+        .log-error {color:#e74c3c;}
+        .log-info {color:#3498db;}
+        .ext-status {display:inline-block;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:bold;margin-left:8px;}
+        .ext-status.installed {background:#e8f5e9;color:#2e7d32;}
+        .ext-status.not-installed {background:#ffebee;color:#c62828;}
+    </style>
+</head>
+<body>
+    <h2>自动打开链接工具【v5.0·扩展滚动方案】</h2>
+
+    <div class="safe-tip">
+💡 <strong>v5.0 核心变更（浏览器扩展滚动方案）</strong>：<br>
+1. <strong>通过 Chrome 扩展注入滚动脚本到阿里页面</strong>，彻底解决跨域滚动问题<br>
+2. 扩展的 content script 在阿里页面内部执行，<code>window.scrollBy()</code> 同源调用，无跨域限制<br>
+3. opener 通过 <code>postMessage</code> 向子窗口发送滚动指令，扩展接收并执行<br>
+4. 完整保留登录态，弹窗方式打开，算真实 PV<br>
+5. 全自动：安装扩展后无需任何手动操作，每次打开阿里页面自动注入滚动能力
+    </div>
+
+    <div class="warn-tip">
+⚠️ <strong>使用前必须安装配套 Chrome 扩展</strong>：<br>
+1. 打开 Chrome → 地址栏输入 <code>chrome://extensions/</code><br>
+2. 打开右上角"开发者模式"<br>
+3. 点击"加载已解压的扩展程序"<br>
+4. 选择 <strong>alibaba-auto-scroll-extension</strong> 文件夹<br>
+5. 安装后刷新本页面，状态会显示"✅ 扩展已安装"<br>
+6. <span class="ext-status not-installed" id="extStatus">检测中...</span>
+    </div>
+
+    <div class="speed-btns">
+        <button id="fastSpeed">快速（间隔5-10s/观看3-5s）</button>
+        <button id="normalSpeed" style="background:#3498db;color:#fff;">普通（间隔20-60s/观看8-15s）</button>
+        <button id="slowSpeed">慢速（间隔60-120s/观看15-30s）</button>
+    </div>
+
+    <div class="config">
+        ✅ 间隔时间：<input type="number" id="intervalMinSec" value="20" min="1" step="1"> 秒 ~ <input type="number" id="intervalMaxSec" value="60" min="1" step="1"> 秒
+        ✅ 浏览停留：<input type="number" id="watchMinSec" value="8" min="1" step="1"> 秒 ~ <input type="number" id="watchMaxSec" value="15" min="1" step="1"> 秒
+        <label><input type="checkbox" id="enableScroll" checked> 启用自动滚动（需要安装扩展）</label>
+    </div>
+
+    <div class="progress-container">
+        <div class="progress-label">
+            <span>浏览进度</span>
+            <span id="watchProgressText">0% (0/0秒)</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="watchProgressBar"></div>
+        </div>
+        <div class="progress-label">
+            <span>间隔进度</span>
+            <span id="intervalProgressText">0% (0/0秒)</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="intervalProgressBar" style="background:#3498db;"></div>
+        </div>
+    </div>
+
+    <div class="url-section">
+        <span>📌 待执行链接（每行1条）<span class="count-tag" id="pendingCount">共0条</span></span>
+        <textarea id="pendingUrlList" placeholder="粘贴阿里商品链接，每行一个"></textarea>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="url-section">
+        <span>✅ 已完成链接<span class="count-tag" id="completedCount">共0条</span></span>
+        <textarea id="completedUrlList" readonly></textarea>
+    </div>
+
+    <div class="log-section">
+        <span>📝 执行日志</span>
+        <div id="logList"></div>
+        <button id="exportLogBtn" style="margin-top:8px;padding:6px 12px;font-size:14px;">📤 导出日志</button>
+    </div>
+
+    <div style="text-align:center;margin:10px 0;">
+        <button id="startBtn">▶️ 开始执行</button>
+        <button id="stopBtn">⏹️ 停止执行</button>
+        <button id="clearPendingBtn">🗑️ 清空待执行</button>
+        <button id="clearCompletedBtn">🗑️ 清空已完成</button>
+    </div>
+
+    <div id="status">💡 就绪：v5.0 扩展滚动方案</div>
+
+    <div class="tips">
+⚠️ <strong>使用说明</strong>：<br>
+1. 首先安装配套 Chrome 扩展（见上方橙色提示）<br>
+2. 安装扩展后，每次打开阿里商品页面，扩展会自动注入滚动脚本<br>
+3. 本工具通过 postMessage 向阿里页面发送滚动指令，无需手动操作<br>
+4. 全自动流程：打开页面 → 等待加载 → 停留1-3秒 → 自动滚动 → 关闭<br>
+5. 如果未安装扩展，滚动功能会自动降级为"仅停留不滚动"模式
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearPendingBtn = document.getElementById('clearPendingBtn');
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+        const intervalMinSec = document.getElementById('intervalMinSec');
+        const intervalMaxSec = document.getElementById('intervalMaxSec');
+        const watchMinSec = document.getElementById('watchMinSec');
+        const watchMaxSec = document.getElementById('watchMaxSec');
+        const pendingUrlList = document.getElementById('pendingUrlList');
+        const completedUrlList = document.getElementById('completedUrlList');
+        const status = document.getElementById('status');
+        const watchProgressBar = document.getElementById('watchProgressBar');
+        const watchProgressText = document.getElementById('watchProgressText');
+        const intervalProgressBar = document.getElementById('intervalProgressBar');
+        const intervalProgressText = document.getElementById('intervalProgressText');
+        const fastSpeed = document.getElementById('fastSpeed');
+        const normalSpeed = document.getElementById('normalSpeed');
+        const slowSpeed = document.getElementById('slowSpeed');
+        const logList = document.getElementById('logList');
+        const exportLogBtn = document.getElementById('exportLogBtn');
+        const pendingCount = document.getElementById('pendingCount');
+        const completedCount = document.getElementById('completedCount');
+        const enableScroll = document.getElementById('enableScroll');
+        const extStatus = document.getElementById('extStatus');
+
+        let timeout = null;
+        let isRunning = false;
+        let childWindows = [];
+        let watchProgressTimer = null;
+        let intervalProgressTimer = null;
+        const STORAGE_KEY = 'autoUrlOpenerData_v5';
+
+        // ===== 扩展检测 =====
+        // 尝试检测扩展是否已安装
+        // 通过发送一条测试消息到子窗口来验证
+        let extensionDetected = false;
+
+        function detectExtension() {
+            // 方法1：尝试通过 chrome.runtime 检测（仅在扩展上下文中可用）
+            // 方法2：打开一个测试窗口，发送消息看是否有响应
+            try {
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+                    extensionDetected = true;
+                }
+            } catch (e) {}
+            
+            updateExtStatus();
+        }
+
+        function updateExtStatus() {
+            if (extensionDetected) {
+                extStatus.textContent = '✅ 扩展已安装';
+                extStatus.className = 'ext-status installed';
+            } else {
+                extStatus.textContent = '❌ 扩展未检测到';
+                extStatus.className = 'ext-status not-installed';
+            }
+        }
+
+        // ===== 核心功能 =====
+
+        function refreshCount() {
+            const pendingArr = pendingUrlList.value.split('\n').filter(s => s.trim());
+            pendingCount.innerText = `共${pendingArr.length}条`;
+            const compArr = completedUrlList.value.split('\n').filter(s => s.trim());
+            completedCount.innerText = `共${compArr.length}条`;
+        }
+
+        function getRandomNumber(min, max) {
+            const minNum = Number(min) || 1;
+            const maxNum = Number(max) || 1;
+            const finalMin = Math.min(minNum, maxNum);
+            const finalMax = Math.max(minNum, maxNum);
+            const base = Math.random() * (finalMax - finalMin) + finalMin;
+            const drift = (Math.random() - 0.5) * 2;
+            return Math.round((base + drift) * 10) / 10;
+        }
+
+        function fakeHumanFocus() {
+            window.focus();
+        }
+
+        function safeOpenUrl(url) {
+            return window.open(url, '_blank', 'noopener=no,noreferrer=no');
+        }
+
+        function updateProgressBar(bar, textEl, current, total) {
+            const percent = Math.min(Math.round((current / total) * 100), 100);
+            bar.style.width = `${percent}%`;
+            textEl.textContent = `${percent}% (${current.toFixed(1)}/${total.toFixed(1)}秒)`;
+        }
+
+        function clearProgressBars() {
+            clearInterval(watchProgressTimer);
+            clearInterval(intervalProgressTimer);
+            watchProgressBar.style.width = '0%';
+            intervalProgressBar.style.width = '0%';
+            watchProgressText.textContent = '0% (0/0秒)';
+            intervalProgressText.textContent = '0% (0/0秒)';
+        }
+
+        /**
+         * 等待目标页面真正加载完成（而非 about:blank）
+         */
+        function waitForTargetPageLoad(targetWin, targetUrl) {
+            return new Promise(resolve => {
+                let waitTime = 0;
+                const maxWaitTime = 15000;
+                const checkInterval = 300;
+
+                const checkLoad = () => {
+                    waitTime += checkInterval;
+                    try {
+                        const currentHref = targetWin.location.href;
+                        const isAboutBlank = currentHref === 'about:blank' || currentHref === '';
+
+                        if (!isAboutBlank) {
+                            try {
+                                if (targetWin.document?.readyState === 'complete') {
+                                    addLog(`目标页面加载完成`);
+                                    resolve();
+                                    return;
+                                }
+                            } catch (e) {
+                                addLog(`目标页面已导航 (跨域)`);
+                                resolve();
+                                return;
+                            }
+                        }
+
+                        if (waitTime >= maxWaitTime) {
+                            addLog('等待页面加载超时，继续执行', 'error');
+                            resolve();
+                            return;
+                        }
+
+                        setTimeout(checkLoad, checkInterval);
+                    } catch (e) {
+                        if (waitTime > 3000) {
+                            addLog('页面可能已加载 (跨域保护)');
+                            resolve();
+                            return;
+                        }
+                        if (waitTime >= maxWaitTime) {
+                            resolve();
+                            return;
+                        }
+                        setTimeout(checkLoad, checkInterval);
+                    }
+                };
+
+                checkLoad();
+            });
+        }
+
+        /**
+         * 通过 postMessage 向子窗口发送滚动指令
+         * Chrome 扩展的 content script 会接收并执行
+         */
+        function startAutoScroll(targetWin, scrollTime) {
+            if (!enableScroll.checked) return;
+
+            addLog(`[v5.0] 发送滚动指令到子窗口，持续 ${scrollTime.toFixed(1)} 秒`);
+
+            try {
+                // 通过 postMessage 发送滚动指令
+                // 扩展的 content.js 会监听这个消息并执行滚动
+                targetWin.postMessage({
+                    type: 'START_SCROLL',
+                    duration: scrollTime
+                }, '*');
+
+                addLog('滚动指令已发送（依赖扩展执行）');
+            } catch (e) {
+                addLog(`发送滚动指令失败: ${e.message}`, 'error');
+            }
+        }
+
+        /**
+         * 发送停止滚动指令
+         */
+        function stopAutoScroll(targetWin) {
+            try {
+                targetWin.postMessage({
+                    type: 'STOP_SCROLL'
+                }, '*');
+            } catch (e) {}
+        }
+
+        function updateUrlLists(executedUrl) {
+            const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
+            const remainingPending = pendingUrls.filter(url => url.trim() !== executedUrl.trim());
+            pendingUrlList.value = remainingPending.join('\n');
+            const completedUrls = completedUrlList.value.split('\n').filter(item => item.trim());
+            completedUrls.push(executedUrl.trim());
+            completedUrlList.value = completedUrls.join('\n');
+            saveToLocalStorage();
+            refreshCount();
+        }
+
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logItem = document.createElement('div');
+            logItem.className = `log-${type}`;
+            logItem.innerText = `[${time}] ${message}`;
+            logList.appendChild(logItem);
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        function loadFromLocalStorage() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                const parsed = JSON.parse(data);
+                pendingUrlList.value = parsed.pending || '';
+                completedUrlList.value = parsed.completed || '';
+                logList.innerHTML = parsed.logs || '';
+                if (parsed.enableScroll !== undefined) enableScroll.checked = parsed.enableScroll;
+            }
+            refreshCount();
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                pending: pendingUrlList.value,
+                completed: completedUrlList.value,
+                logs: logList.innerHTML,
+                enableScroll: enableScroll.checked
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function exportLog() {
+            const logText = logList.innerText;
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `打开链接日志_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        async function runTask() {
+            if (!isRunning) return;
+            const pendingUrls = pendingUrlList.value.split('\n').filter(item => item.trim());
+            if (pendingUrls.length === 0) {
+                isRunning = false;
+                clearProgressBars();
+                const cnt = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+                status.innerHTML = `✅ 执行完成，累计完成 ${cnt} 个链接`;
+                status.style.color = "#27ae60";
+                addLog(`✅ 全部任务执行完毕`, 'success');
+                return;
+            }
+
+            const currentUrl = pendingUrls[0].trim();
+            const count = completedUrlList.value.split('\n').filter(item => item.trim()).length;
+
+            status.innerHTML = `🔄 正在执行第 ${count + 1} 个链接`;
+            status.style.color = "#2980b9";
+            addLog(`开始执行：${currentUrl}`);
+
+            fakeHumanFocus();
+            const newWin = safeOpenUrl(currentUrl);
+            if (!newWin) {
+                status.innerHTML = "❌ 请允许浏览器弹窗！";
+                status.style.color = "#e74c3c";
+                addLog("弹窗被浏览器拦截", "error");
+                isRunning = false;
+                return;
+            }
+            childWindows.push(newWin);
+
+            // 等待目标页面真正加载完成
+            addLog('等待目标页面加载...');
+            await waitForTargetPageLoad(newWin, currentUrl);
+
+            // 页面加载完成后，模拟真人先看一会儿
+            const initialViewTime = 1 + Math.random() * 2;
+            addLog(`页面就绪，先停留 ${initialViewTime.toFixed(1)} 秒再开始滚动`);
+            await new Promise(r => setTimeout(r, initialViewTime * 1000));
+
+            const watchTime = getRandomNumber(watchMinSec.value, watchMaxSec.value);
+            addLog(`模拟真人浏览 ${watchTime} 秒`);
+
+            let cur = 0;
+            clearInterval(watchProgressTimer);
+            watchProgressTimer = setInterval(() => {
+                cur += 0.1;
+                updateProgressBar(watchProgressBar, watchProgressText, cur, watchTime);
+                if (cur >= watchTime) clearInterval(watchProgressTimer);
+            }, 100);
+
+            // 发送滚动指令到子窗口（扩展会执行）
+            const scrollDuration = watchTime - initialViewTime;
+            startAutoScroll(newWin, scrollDuration);
+
+            setTimeout(() => {
+                // 发送停止滚动指令
+                stopAutoScroll(newWin);
+
+                try { newWin.close(); childWindows = childWindows.filter(w => w !== newWin); } catch (e) {}
+                updateUrlLists(currentUrl);
+                addLog(`✅ 完成浏览，保留登录态成功`, "success");
+
+                const intervalTime = getRandomNumber(intervalMinSec.value, intervalMaxSec.value);
+                addLog(`等待 ${intervalTime} 秒后继续下一个`);
+
+                let curInt = 0;
+                clearInterval(intervalProgressTimer);
+                intervalProgressTimer = setInterval(() => {
+                    curInt += 0.1;
+                    updateProgressBar(intervalProgressBar, intervalProgressText, curInt, intervalTime);
+                    if (curInt >= intervalTime) clearInterval(intervalProgressTimer);
+                }, 100);
+
+                timeout = setTimeout(runTask, intervalTime * 1000);
+            }, watchTime * 1000);
+        }
+
+        function validateInputs() {
+            const imin = Number(intervalMinSec.value);
+            const imax = Number(intervalMaxSec.value);
+            const wmin = Number(watchMinSec.value);
+            const wmax = Number(watchMaxSec.value);
+            if (imin > imax || wmin > wmax || imin < 1 || wmin < 1) {
+                status.innerText = "❌ 时间区间设置错误";
+                status.style.color = "#e74c3c";
+                return false;
+            }
+            return true;
+        }
+
+        startBtn.onclick = () => {
+            if (isRunning) return;
+            if (!pendingUrlList.value.trim()) {
+                status.innerText = "❌ 请先粘贴链接";
+                status.style.color = "#e74c3c";
+                return;
+            }
+            if (!validateInputs()) return;
+            isRunning = true;
+            status.innerText = "✅ 任务开始，扩展滚动模式";
+            status.style.color = "#27ae60";
+            addLog("任务启动，弹窗模式 + 扩展滚动", "success");
+            runTask();
+        };
+
+        stopBtn.onclick = () => {
+            clearTimeout(timeout);
+            clearProgressBars();
+            childWindows.forEach(w => { 
+                try { stopAutoScroll(w); w.close(); } catch (e) {} 
+            });
+            childWindows = [];
+            isRunning = false;
+            status.innerText = "⏹️ 任务已停止";
+            status.style.color = "#e74c3c";
+            addLog("手动停止任务");
+        };
+
+        clearPendingBtn.onclick = () => {
+            pendingUrlList.value = '';
+            saveToLocalStorage();
+            refreshCount();
+            status.innerText = "🗑️ 已清空待执行";
+            status.style.color = "#3498db";
+        };
+
+        clearCompletedBtn.onclick = () => {
+            completedUrlList.value = '';
+            saveToLocalStorage();
+            refreshCount();
+            status.innerText = "🗑️ 已清空已完成";
+            status.style.color = "#3498db";
+        };
+
+        fastSpeed.onclick = () => {
+            intervalMinSec.value = 5; intervalMaxSec.value = 10;
+            watchMinSec.value = 3; watchMaxSec.value = 5;
+            addLog("切换快速档位");
+        };
+        normalSpeed.onclick = () => {
+            intervalMinSec.value = 20; intervalMaxSec.value = 60;
+            watchMinSec.value = 8; watchMaxSec.value = 15;
+            addLog("切换普通档位（推荐）");
+        };
+        slowSpeed.onclick = () => {
+            intervalMinSec.value = 60; intervalMaxSec.value = 120;
+            watchMinSec.value = 15; watchMaxSec.value = 30;
+            addLog("切换慢速档位（最低风控）");
+        };
+
+        exportLogBtn.onclick = exportLog;
+        pendingUrlList.addEventListener('input', refreshCount);
+        enableScroll.addEventListener('change', saveToLocalStorage);
+
+        window.onload = () => {
+            loadFromLocalStorage();
+            detectExtension();
+        };
+        setInterval(saveToLocalStorage, 5000);
+    </script>
+</body>
+</html>
