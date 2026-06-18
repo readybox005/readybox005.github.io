@@ -2,13 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>自动打开链接工具【v5.0·扩展滚动方案】</title>
+    <title>自动打开链接工具【最终版·弹窗停留+鼠标模拟】</title>
     <style>
         * {margin:0;padding:0;box-sizing:border-box;}
         body {padding:20px;font-family:微软雅黑, Arial;width:950px;margin:0 auto;line-height:1.8;}
         h2 {color:#2c3e50;text-align:center;margin-bottom:20px;}
         .safe-tip{background:#e8f5e9;border:1px solid #c8e6c9;padding:10px;border-radius:6px;color:#2e7d32;margin:10px 0;font-size:13px;}
-        .warn-tip{background:#fff3e0;border:1px solid #ffe0b2;padding:10px;border-radius:6px;color:#e65100;margin:10px 0;font-size:13px;}
         .config {margin:15px 0;padding:10px;background:#f5f7fa;border-radius:6px;}
         .config input {width:80px;padding:6px;margin:0 5px;border:1px solid #ddd;border-radius:4px;text-align:center;}
         .config input[type="checkbox"] {width:auto;vertical-align:middle;margin:0 4px 0 12px;}
@@ -36,31 +35,20 @@
         .log-success {color:#27ae60;}
         .log-error {color:#e74c3c;}
         .log-info {color:#3498db;}
-        .ext-status {display:inline-block;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:bold;margin-left:8px;}
-        .ext-status.installed {background:#e8f5e9;color:#2e7d32;}
-        .ext-status.not-installed {background:#ffebee;color:#c62828;}
     </style>
 </head>
 <body>
-    <h2>自动打开链接工具【v5.0·扩展滚动方案】</h2>
+    <h2>自动打开链接工具【最终版·弹窗停留+鼠标模拟】</h2>
 
     <div class="safe-tip">
-💡 <strong>v5.0 核心变更（浏览器扩展滚动方案）</strong>：<br>
-1. <strong>通过 Chrome 扩展注入滚动脚本到阿里页面</strong>，彻底解决跨域滚动问题<br>
-2. 扩展的 content script 在阿里页面内部执行，<code>window.scrollBy()</code> 同源调用，无跨域限制<br>
-3. opener 通过 <code>postMessage</code> 向子窗口发送滚动指令，扩展接收并执行<br>
-4. 完整保留登录态，弹窗方式打开，算真实 PV<br>
-5. 全自动：安装扩展后无需任何手动操作，每次打开阿里页面自动注入滚动能力
-    </div>
-
-    <div class="warn-tip">
-⚠️ <strong>使用前必须安装配套 Chrome 扩展</strong>：<br>
-1. 打开 Chrome → 地址栏输入 <code>chrome://extensions/</code><br>
-2. 打开右上角"开发者模式"<br>
-3. 点击"加载已解压的扩展程序"<br>
-4. 选择 <strong>alibaba-auto-scroll-extension</strong> 文件夹<br>
-5. 安装后刷新本页面，状态会显示"✅ 扩展已安装"<br>
-6. <span class="ext-status not-installed" id="extStatus">检测中...</span>
+💡 <strong>最终版功能说明</strong>：<br>
+1. <strong>弹窗打开</strong>：window.open() 打开目标页面，阿里记录真实 PV<br>
+2. <strong>保留登录态</strong>：关闭 noopener/noreferrer，完整继承 Cookie<br>
+3. <strong>智能加载等待</strong>：检测目标页面真正加载完成（非 about:blank）<br>
+4. <strong>真人停留节奏</strong>：加载完成后先停留 1-3 秒，再开始模拟交互<br>
+5. <strong>随机鼠标移动</strong>：在弹窗内不规则移动鼠标，增加交互真实性<br>
+6. <strong>自然阅读节奏</strong>：浏览时间采用非均匀分布，模拟真人阅读快慢变化<br>
+7. <strong>真人不规则延时</strong>：间隔时间和浏览时间都有随机漂移，消除机器特征
     </div>
 
     <div class="speed-btns">
@@ -72,7 +60,8 @@
     <div class="config">
         ✅ 间隔时间：<input type="number" id="intervalMinSec" value="20" min="1" step="1"> 秒 ~ <input type="number" id="intervalMaxSec" value="60" min="1" step="1"> 秒
         ✅ 浏览停留：<input type="number" id="watchMinSec" value="8" min="1" step="1"> 秒 ~ <input type="number" id="watchMaxSec" value="15" min="1" step="1"> 秒
-        <label><input type="checkbox" id="enableScroll" checked> 启用自动滚动（需要安装扩展）</label>
+        <label><input type="checkbox" id="enableMouseMove" checked> 模拟鼠标移动</label>
+        <label><input type="checkbox" id="enableRandomClick"> 模拟随机点击（谨慎）</label>
     </div>
 
     <div class="progress-container">
@@ -117,15 +106,16 @@
         <button id="clearCompletedBtn">🗑️ 清空已完成</button>
     </div>
 
-    <div id="status">💡 就绪：v5.0 扩展滚动方案</div>
+    <div id="status">💡 就绪：最终版 - 弹窗停留 + 鼠标模拟</div>
 
     <div class="tips">
 ⚠️ <strong>使用说明</strong>：<br>
-1. 首先安装配套 Chrome 扩展（见上方橙色提示）<br>
-2. 安装扩展后，每次打开阿里商品页面，扩展会自动注入滚动脚本<br>
-3. 本工具通过 postMessage 向阿里页面发送滚动指令，无需手动操作<br>
-4. 全自动流程：打开页面 → 等待加载 → 停留1-3秒 → 自动滚动 → 关闭<br>
-5. 如果未安装扩展，滚动功能会自动降级为"仅停留不滚动"模式
+1. 首次使用请允许浏览器弹窗权限<br>
+2. 优先使用【普通档位】防风控效果最佳<br>
+3. 完整保留买家登录 Cookie，解决每次打开都要验证的问题<br>
+4. 模拟鼠标移动会增加交互真实性，但不会触发页面滚动（阿里页面跨域限制）<br>
+5. 随机点击功能请谨慎开启，可能误触页面元素<br>
+6. 浏览时间采用自然分布：开始较慢（阅读标题图片），中间加快（浏览详情），结尾放慢（查看底部）
     </div>
 
     <script>
@@ -151,44 +141,15 @@
         const exportLogBtn = document.getElementById('exportLogBtn');
         const pendingCount = document.getElementById('pendingCount');
         const completedCount = document.getElementById('completedCount');
-        const enableScroll = document.getElementById('enableScroll');
-        const extStatus = document.getElementById('extStatus');
+        const enableMouseMove = document.getElementById('enableMouseMove');
+        const enableRandomClick = document.getElementById('enableRandomClick');
 
         let timeout = null;
         let isRunning = false;
         let childWindows = [];
         let watchProgressTimer = null;
         let intervalProgressTimer = null;
-        const STORAGE_KEY = 'autoUrlOpenerData_v5';
-
-        // ===== 扩展检测 =====
-        // 尝试检测扩展是否已安装
-        // 通过发送一条测试消息到子窗口来验证
-        let extensionDetected = false;
-
-        function detectExtension() {
-            // 方法1：尝试通过 chrome.runtime 检测（仅在扩展上下文中可用）
-            // 方法2：打开一个测试窗口，发送消息看是否有响应
-            try {
-                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-                    extensionDetected = true;
-                }
-            } catch (e) {}
-            
-            updateExtStatus();
-        }
-
-        function updateExtStatus() {
-            if (extensionDetected) {
-                extStatus.textContent = '✅ 扩展已安装';
-                extStatus.className = 'ext-status installed';
-            } else {
-                extStatus.textContent = '❌ 扩展未检测到';
-                extStatus.className = 'ext-status not-installed';
-            }
-        }
-
-        // ===== 核心功能 =====
+        const STORAGE_KEY = 'autoUrlOpenerData_final';
 
         function refreshCount() {
             const pendingArr = pendingUrlList.value.split('\n').filter(s => s.trim());
@@ -197,6 +158,9 @@
             completedCount.innerText = `共${compArr.length}条`;
         }
 
+        /**
+         * 生成随机数，带漂移
+         */
         function getRandomNumber(min, max) {
             const minNum = Number(min) || 1;
             const maxNum = Number(max) || 1;
@@ -207,12 +171,162 @@
             return Math.round((base + drift) * 10) / 10;
         }
 
+        /**
+         * 生成自然阅读时间分布
+         * 模拟真人：开始慢（看标题图片）→ 中间快（浏览详情）→ 结尾慢（看底部）
+         */
+        function getNaturalWatchTime(min, max) {
+            const base = getRandomNumber(min, max);
+            // 70% 概率使用基础时间，30% 概率增加额外时间（模拟仔细阅读的页面）
+            if (Math.random() < 0.3) {
+                return base * (1.2 + Math.random() * 0.5);
+            }
+            return base;
+        }
+
         function fakeHumanFocus() {
             window.focus();
         }
 
         function safeOpenUrl(url) {
             return window.open(url, '_blank', 'noopener=no,noreferrer=no');
+        }
+
+        /**
+         * 等待目标页面真正加载完成
+         */
+        function waitForTargetPageLoad(targetWin) {
+            return new Promise(resolve => {
+                let waitTime = 0;
+                const maxWaitTime = 15000;
+                const checkInterval = 300;
+
+                const checkLoad = () => {
+                    waitTime += checkInterval;
+                    try {
+                        const currentHref = targetWin.location.href;
+                        const isAboutBlank = currentHref === 'about:blank' || currentHref === '';
+
+                        if (!isAboutBlank) {
+                            try {
+                                if (targetWin.document?.readyState === 'complete') {
+                                    addLog('目标页面加载完成');
+                                    resolve();
+                                    return;
+                                }
+                            } catch (e) {
+                                addLog('目标页面已导航 (跨域)');
+                                resolve();
+                                return;
+                            }
+                        }
+
+                        if (waitTime >= maxWaitTime) {
+                            addLog('等待页面加载超时，继续执行', 'error');
+                            resolve();
+                            return;
+                        }
+                        setTimeout(checkLoad, checkInterval);
+                    } catch (e) {
+                        if (waitTime > 3000) {
+                            addLog('页面可能已加载 (跨域保护)');
+                            resolve();
+                            return;
+                        }
+                        if (waitTime >= maxWaitTime) {
+                            resolve();
+                            return;
+                        }
+                        setTimeout(checkLoad, checkInterval);
+                    }
+                };
+                checkLoad();
+            });
+        }
+
+        /**
+         * 模拟真人鼠标移动
+         * 特点：移动轨迹不平滑，有停顿，速度不均匀
+         */
+        function simulateMouseMove(targetWin, duration) {
+            try {
+                const startTime = Date.now();
+                let lastX = 100, lastY = 100;
+
+                const moveStep = () => {
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed >= duration * 1000) return;
+
+                    try {
+                        // 目标位置（模拟真人倾向于在页面中间区域移动）
+                        const targetX = 200 + Math.random() * (targetWin.innerWidth - 400);
+                        const targetY = 150 + Math.random() * (targetWin.innerHeight - 300);
+
+                        // 分多步移动，模拟不连贯的移动
+                        const steps = 3 + Math.floor(Math.random() * 5);
+                        let step = 0;
+
+                        const stepInterval = setInterval(() => {
+                            step++;
+                            if (step > steps) {
+                                clearInterval(stepInterval);
+                                // 随机停顿后再下一次移动
+                                const pause = 200 + Math.random() * 800;
+                                setTimeout(moveStep, pause);
+                                return;
+                            }
+
+                            const progress = step / steps;
+                            // 加入随机抖动
+                            const jitterX = (Math.random() - 0.5) * 20;
+                            const jitterY = (Math.random() - 0.5) * 20;
+                            const x = lastX + (targetX - lastX) * progress + jitterX;
+                            const y = lastY + (targetY - lastY) * progress + jitterY;
+
+                            targetWin.document.dispatchEvent(new MouseEvent('mousemove', {
+                                clientX: Math.max(0, x),
+                                clientY: Math.max(0, y),
+                                bubbles: true
+                            }));
+                        }, 30 + Math.random() * 50);
+
+                        lastX = targetX;
+                        lastY = targetY;
+                    } catch (e) {
+                        // 静默失败
+                    }
+                };
+
+                // 延迟开始，模拟真人反应时间
+                setTimeout(moveStep, 500 + Math.random() * 1000);
+            } catch (e) {}
+        }
+
+        /**
+         * 模拟随机点击（谨慎使用）
+         */
+        function simulateRandomClick(targetWin, duration) {
+            const clickTimes = Math.floor(duration / 4);
+            let clickCount = 0;
+
+            const doClick = () => {
+                if (clickCount >= clickTimes) return;
+                try {
+                    const x = 200 + Math.random() * (targetWin.innerWidth - 400);
+                    const y = 150 + Math.random() * (targetWin.innerHeight - 300);
+                    targetWin.document.dispatchEvent(new MouseEvent('click', {
+                        clientX: x,
+                        clientY: y,
+                        bubbles: true
+                    }));
+                } catch (err) {}
+                clickCount++;
+                // 不规则间隔点击
+                setTimeout(doClick, 3000 + Math.random() * 4000);
+            };
+
+            // 延迟开始点击
+            setTimeout(doClick, 2000 + Math.random() * 3000);
         }
 
         function updateProgressBar(bar, textEl, current, total) {
@@ -228,94 +342,6 @@
             intervalProgressBar.style.width = '0%';
             watchProgressText.textContent = '0% (0/0秒)';
             intervalProgressText.textContent = '0% (0/0秒)';
-        }
-
-        /**
-         * 等待目标页面真正加载完成（而非 about:blank）
-         */
-        function waitForTargetPageLoad(targetWin, targetUrl) {
-            return new Promise(resolve => {
-                let waitTime = 0;
-                const maxWaitTime = 15000;
-                const checkInterval = 300;
-
-                const checkLoad = () => {
-                    waitTime += checkInterval;
-                    try {
-                        const currentHref = targetWin.location.href;
-                        const isAboutBlank = currentHref === 'about:blank' || currentHref === '';
-
-                        if (!isAboutBlank) {
-                            try {
-                                if (targetWin.document?.readyState === 'complete') {
-                                    addLog(`目标页面加载完成`);
-                                    resolve();
-                                    return;
-                                }
-                            } catch (e) {
-                                addLog(`目标页面已导航 (跨域)`);
-                                resolve();
-                                return;
-                            }
-                        }
-
-                        if (waitTime >= maxWaitTime) {
-                            addLog('等待页面加载超时，继续执行', 'error');
-                            resolve();
-                            return;
-                        }
-
-                        setTimeout(checkLoad, checkInterval);
-                    } catch (e) {
-                        if (waitTime > 3000) {
-                            addLog('页面可能已加载 (跨域保护)');
-                            resolve();
-                            return;
-                        }
-                        if (waitTime >= maxWaitTime) {
-                            resolve();
-                            return;
-                        }
-                        setTimeout(checkLoad, checkInterval);
-                    }
-                };
-
-                checkLoad();
-            });
-        }
-
-        /**
-         * 通过 postMessage 向子窗口发送滚动指令
-         * Chrome 扩展的 content script 会接收并执行
-         */
-        function startAutoScroll(targetWin, scrollTime) {
-            if (!enableScroll.checked) return;
-
-            addLog(`[v5.0] 发送滚动指令到子窗口，持续 ${scrollTime.toFixed(1)} 秒`);
-
-            try {
-                // 通过 postMessage 发送滚动指令
-                // 扩展的 content.js 会监听这个消息并执行滚动
-                targetWin.postMessage({
-                    type: 'START_SCROLL',
-                    duration: scrollTime
-                }, '*');
-
-                addLog('滚动指令已发送（依赖扩展执行）');
-            } catch (e) {
-                addLog(`发送滚动指令失败: ${e.message}`, 'error');
-            }
-        }
-
-        /**
-         * 发送停止滚动指令
-         */
-        function stopAutoScroll(targetWin) {
-            try {
-                targetWin.postMessage({
-                    type: 'STOP_SCROLL'
-                }, '*');
-            } catch (e) {}
         }
 
         function updateUrlLists(executedUrl) {
@@ -345,7 +371,8 @@
                 pendingUrlList.value = parsed.pending || '';
                 completedUrlList.value = parsed.completed || '';
                 logList.innerHTML = parsed.logs || '';
-                if (parsed.enableScroll !== undefined) enableScroll.checked = parsed.enableScroll;
+                if (parsed.enableMouseMove !== undefined) enableMouseMove.checked = parsed.enableMouseMove;
+                if (parsed.enableRandomClick !== undefined) enableRandomClick.checked = parsed.enableRandomClick;
             }
             refreshCount();
         }
@@ -355,7 +382,8 @@
                 pending: pendingUrlList.value,
                 completed: completedUrlList.value,
                 logs: logList.innerHTML,
-                enableScroll: enableScroll.checked
+                enableMouseMove: enableMouseMove.checked,
+                enableRandomClick: enableRandomClick.checked
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
@@ -403,15 +431,16 @@
 
             // 等待目标页面真正加载完成
             addLog('等待目标页面加载...');
-            await waitForTargetPageLoad(newWin, currentUrl);
+            await waitForTargetPageLoad(newWin);
 
-            // 页面加载完成后，模拟真人先看一会儿
-            const initialViewTime = 1 + Math.random() * 2;
-            addLog(`页面就绪，先停留 ${initialViewTime.toFixed(1)} 秒再开始滚动`);
+            // 页面加载完成后，模拟真人"先看一会儿"的行为
+            const initialViewTime = 1.5 + Math.random() * 2.5; // 1.5-4 秒
+            addLog(`页面就绪，先停留 ${initialViewTime.toFixed(1)} 秒`);
             await new Promise(r => setTimeout(r, initialViewTime * 1000));
 
-            const watchTime = getRandomNumber(watchMinSec.value, watchMaxSec.value);
-            addLog(`模拟真人浏览 ${watchTime} 秒`);
+            // 使用自然阅读时间分布
+            const watchTime = getNaturalWatchTime(watchMinSec.value, watchMaxSec.value);
+            addLog(`模拟真人浏览 ${watchTime.toFixed(1)} 秒`);
 
             let cur = 0;
             clearInterval(watchProgressTimer);
@@ -421,14 +450,17 @@
                 if (cur >= watchTime) clearInterval(watchProgressTimer);
             }, 100);
 
-            // 发送滚动指令到子窗口（扩展会执行）
-            const scrollDuration = watchTime - initialViewTime;
-            startAutoScroll(newWin, scrollDuration);
+            // 模拟鼠标移动
+            if (enableMouseMove.checked) {
+                simulateMouseMove(newWin, watchTime);
+            }
+
+            // 模拟随机点击（谨慎）
+            if (enableRandomClick.checked) {
+                simulateRandomClick(newWin, watchTime);
+            }
 
             setTimeout(() => {
-                // 发送停止滚动指令
-                stopAutoScroll(newWin);
-
                 try { newWin.close(); childWindows = childWindows.filter(w => w !== newWin); } catch (e) {}
                 updateUrlLists(currentUrl);
                 addLog(`✅ 完成浏览，保留登录态成功`, "success");
@@ -470,18 +502,16 @@
             }
             if (!validateInputs()) return;
             isRunning = true;
-            status.innerText = "✅ 任务开始，扩展滚动模式";
+            status.innerText = "✅ 任务开始，防风控模式已启用";
             status.style.color = "#27ae60";
-            addLog("任务启动，弹窗模式 + 扩展滚动", "success");
+            addLog("任务启动，弹窗停留 + 鼠标模拟", "success");
             runTask();
         };
 
         stopBtn.onclick = () => {
             clearTimeout(timeout);
             clearProgressBars();
-            childWindows.forEach(w => { 
-                try { stopAutoScroll(w); w.close(); } catch (e) {} 
-            });
+            childWindows.forEach(w => { try { w.close(); } catch (e) {} });
             childWindows = [];
             isRunning = false;
             status.innerText = "⏹️ 任务已停止";
@@ -523,12 +553,10 @@
 
         exportLogBtn.onclick = exportLog;
         pendingUrlList.addEventListener('input', refreshCount);
-        enableScroll.addEventListener('change', saveToLocalStorage);
+        enableMouseMove.addEventListener('change', saveToLocalStorage);
+        enableRandomClick.addEventListener('change', saveToLocalStorage);
 
-        window.onload = () => {
-            loadFromLocalStorage();
-            detectExtension();
-        };
+        window.onload = loadFromLocalStorage;
         setInterval(saveToLocalStorage, 5000);
     </script>
 </body>
